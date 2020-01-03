@@ -10,8 +10,8 @@ Any remarks or questions post on [User Forum](https://groups.google.com/forum/#!
 
 # Prerequisite
 I assume you have GC installed and python up and running in GC.
-And your python is at least setuped as described in [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
-For now only tested with pycharm and on windows.   
+And your python is at least configured as described in [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
+For now this is only tested with pycharm and on windows 10.   
 
 # Choose your favorite python IDE.
 For this project I use PyCharm for download see [PyCharm](https://www.jetbrains.com/pycharm/).
@@ -19,14 +19,14 @@ Once you have create a project and selected your desired python interpreter for 
 
 <img src="imgs/pycharm_setup.png" height="400" >
 
-# Setting up the data 
-I created a few example script that should you getting started.
-In the folder `example_extractions_scripts` these script could be copied into a python chart
+# Setting up the data
+There are a few example script when those are executed in GC you should be able to create you first charts with your own IDE.
+In the folder `example_extractions_scripts` these script could be copied into a GC python chart
 Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
 `
 
-Note: When you have executed them all `activity` and `trend` you should be able to execute the small_example_scripts
-is not you propable get an error like:
+Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts.
+If you haven't executed them you probable get an error like:
  
 ```python
 Traceback (most recent call last):
@@ -40,7 +40,7 @@ ImportError: cannot import name 'activity_xxx_data'
 ```
 
 # Be creative :)
-some time you need special data you can implement this in the GC_wrapper function small exmaple is given below to get 
+Sometimes you need special data you can implement this in the GC_wrapper functions. A small example is given below to get 
 specific season metrics:
 ```python
 def seasonPmc(all=False, metric="TSS"):  # to get PMC data for any given metric
@@ -56,4 +56,5 @@ Simple copy paste the content of the python file and remove the following line:
  
  `from GC_Wrapper import GC_wrapper as GC`
 
+And don't forget to share your charts in the cloud db function of GC so other also benefit from it :) 
 
