@@ -1,0 +1,5 @@
+pmc = GC.seasonPmc(all=True, metric="BikeStress")
+f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/trend_all_tss_pmc.py', "w+")
+f.writelines("import datetime \n")
+f.writelines("all_tss_pmc = ")
+f.writelines(str(pmc))

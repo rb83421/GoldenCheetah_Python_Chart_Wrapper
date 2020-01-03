@@ -78,8 +78,8 @@ def athlete():  # to get the athlete details
 
 
 def athleteZones(date=0, sport=""):  # to get zone config
-    # Not implemented yet
-    return None
+    from GC_DATA import athlete_current_zones
+    return athlete_current_zones.current_zones
 
 
 # Activity
@@ -135,8 +135,8 @@ def activityMeanmax(compare=False):  # to get mean maximals for all activity dat
 
 
 def activityIntervals(type="", activity=None):  # to get information about activity intervals
-    # Not implemented yet
-    return None
+    from GC_DATA import activity_xxx_intervals
+    return activity_xxx_intervals.activity_intervals
 
 
 # Trends
@@ -146,8 +146,8 @@ def season(all=False, compare=False):  # to get season details
 
 
 def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
-    # Not implemented yet
-    return None
+    from GC_DATA import trend_all_season_metrics
+    return trend_all_season_metrics.all_season_metrics
 
 
 def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maximals for a season
@@ -162,7 +162,11 @@ def seasonPeaks(all=False, filter="", compare=False, series="wpk",
 
 
 def seasonPmc(all=False, metric="TSS"):  # to get PMC data for any given metric
-    # Not implemented yet
+    from GC_DATA import trend_all_tss_pmc
+    if metric == "TSS" or metric == "BikeStress":
+        return trend_all_tss_pmc.all_tss_pmc
+
+    # Rest Not implemented yet
     return None
 
 
