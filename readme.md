@@ -2,32 +2,34 @@
 [Golden Cheetah](https://www.goldencheetah.org) (GC) is an analytic software that lets you get the value out of all your data.
 This wrapper program is enabling you to build more advance python charts and debug them.
 
-Within GC you can create python charts for more information on that look [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
+Within GC you can create python charts for more information on that see GC wiki page: [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
 
 This project is created based on GC version 3.5 
 
-Any remarks or questions post on [User Forum](https://groups.google.com/forum/#!forum/golden-cheetah-users)
+Any remarks or questions post them on the GC [User Forum](https://groups.google.com/forum/#!forum/golden-cheetah-users)
 
 # Prerequisite
-I assume you have GC installed and python up and running in GC.
-And your python is at least configured as described in [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
-For now this is only tested with pycharm and on windows 10.   
+I assume you have GC installed and configured python in GC.
+Your python is at least configured as described in GC wiki page: [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
+
+**For now this is only tested with pycharm and on windows 10.**   
 
 # Choose your favorite python IDE.
 For this project I use PyCharm for download see [PyCharm](https://www.jetbrains.com/pycharm/).
-Once you have create a project and selected your desired python interpreter for easy interoperability use the same that is configured in GC.
+Once you have cloned or downloaded this project and opened it in pycharm you should configure you python interpreter.
+For easy use and interoperability use the same python interpreter that is configured in GC
 
 <img src="imgs/pycharm_setup.png" height="400" >
 
 # Setting up the data
-There are a few example script when those are executed in GC you should be able to create you first charts with your own IDE.
-In the folder `example_extractions_scripts` these script could be copied into a GC python chart
-Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
-`
+There are a few example script when those are executed in GC you should be able to create/execute your first charts with your own IDE.
+These script can be found in folder `example_extractions_scripts` copy en execute them into a GC python chart.
 
-Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts.
-If you haven't executed them you probable get an error like:
- 
+**Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
+`**
+
+**Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts `activity_ride_plots.py`/`activity_small_example`/`trend_small_example`.
+If you haven't executed them you probable get an error like:**
 ```python
 Traceback (most recent call last):
   File "D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/activity_small_example.py", line 34, in <module>
