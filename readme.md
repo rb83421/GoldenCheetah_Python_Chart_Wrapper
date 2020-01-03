@@ -24,6 +24,7 @@ I created a few example script that should you getting started.
 In the folder `example_extractions_scripts` these script could be copied into a python chart
 Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
 `
+
 Note: When you have executed them all `activity` and `trend` you should be able to execute the small_example_scripts
 is not you propable get an error like:
  

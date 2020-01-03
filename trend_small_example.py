@@ -23,17 +23,18 @@ gc_text_color = "#ffffff"  # 'rgb(255,255,255)'
 
 
 def main():
-    act = GC.activity()
+    season_metrics = GC.seasonMetrics()
 
     fig = go.Figure()
     fig.add_trace(
-        go.Scatter(x=act['seconds'],
-                   y=act['heart.rate'],
-                   name="Heart rate",
-                   line=dict(color='red'))
+        go.Bar(
+            x=season_metrics['date'],
+            y=season_metrics['Distance'],
+            name="Distance",
+        )
     )
     fig.update_layout(
-        title="Small heart rate example",
+        title="Small trend distance example",
         paper_bgcolor=gc_bg_color,
         plot_bgcolor=gc_bg_color,
         showlegend=True,
@@ -41,8 +42,8 @@ def main():
             color=gc_text_color,
             size=12
         ),
-        xaxis_title='seconds',
-        yaxis_title='heart reate (bmp)',
+        xaxis_title='Date',
+        yaxis_title='Distance (km)',
     )
     plotly.offline.plot(fig, auto_open=False, filename=temp_file.name)
     GC.webpage(pathlib.Path(temp_file.name).as_uri())
