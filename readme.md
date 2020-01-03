@@ -11,4 +11,9 @@ This project is created based on GC version 3.5
 For this project I use PyCharm for download see [PyCharm](https://www.jetbrains.com/pycharm/).
 Once you have create a project and selected your desired python interpreter for easy interoperability use the same that is configured in GC.
 
-![pycharm setup](https://github.com/rb83421/GoldenCheetah_Python_Chart_Wrapper/imgs/pycharm_setup.png "pycharm setup")
+![pycharm setup](https://github.com/rb83421/GoldenCheetah_Python_Chart_Wrapper/tree/master/imgs/pycharm_setup.png)
+
+# Add Chart to GC
+Simple copy paste the content of the python file and remove the following line:
+ 
+ `from GC_Wrapper import GC_wrapper as GC`

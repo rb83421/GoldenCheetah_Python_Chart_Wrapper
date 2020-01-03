@@ -87,17 +87,23 @@ def activities(filter=""):  # to get a list of activities (as dates): #
     # Not implemented yet
     return None
 
-
-
 def activity(activity=None):  # to get the activity data
-    # Not implemented yet
-    return None
+    from GC_DATA import activity_xxx_data
+    return activity_xxx_data.activity_xxx
 
 
 def series(type, activity=None):  # to get an individual series data
+    from GC_DATA import activity_xxx_series
+    if type == SERIES_HR:
+        return activity_xxx_series.HR
+    elif type == SERIES_WATTS:
+        return activity_xxx_series.WATTS
+    elif type == SERIES_SECS:
+        return activity_xxx_series.SECS
+    else:
+        raise Exception('NOT YET Implemented in GC wrapper' + str(type))
     # Not implemented yet
     return None
-
 
 def activityWbal(activity=None):  # to get wbal series data    #Not implemented yet
     # Not implemented yet

@@ -1,6 +1,0 @@
-activityMetrics = GC.activityMetrics()
-f = open('D:/GC_Python_Charts/GC_DATA/activity_xxx_metrics.py', "w+")
-f.writelines("import datetime" )
-f.writelines("activityMetrics = " )
-f.writelines(str(activityMetrics))
-f.close()
