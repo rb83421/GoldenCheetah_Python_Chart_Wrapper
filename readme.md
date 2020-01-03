@@ -1,7 +1,8 @@
 # Golden Cheetah Python Chart wrapper
 [Golden Cheetah](https://www.goldencheetah.org) (GC) is an open-source data analysis tool primarily written in C++ with Qt for cyclists and triathletes with support for training as well.
 
-This wrapper program is enabling you to build more advance python charts and debug them.
+This wrapper program is enabling you to build more advance python charts and **debug** them.
+
 Within GC you can create python charts for more information on that see GC wiki page: [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
 
 This project is created based on GC version 3.5 
@@ -28,7 +29,8 @@ These script can be found in folder `example_extractions_scripts` copy en execut
 **Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
 `**
 
-**Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts `activity_ride_plots.py`/`activity_small_example`/`trend_small_example`.
+**Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts `activity_ride_plots.py`/`activity_small_example.py`/`trend_small_example.py`.
+
 If you haven't executed them you probable get an error like:**
 ```python
 Traceback (most recent call last):
