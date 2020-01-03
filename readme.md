@@ -1,7 +1,7 @@
 # Golden Cheetah Python Chart wrapper
-[Golden Cheetah](https://www.goldencheetah.org) (GC) is an analytic software that lets you get the value out of all your data.
-This wrapper program is enabling you to build more advance python charts and debug them.
+[Golden Cheetah](https://www.goldencheetah.org) (GC) is an open-source data analysis tool primarily written in C++ with Qt for cyclists and triathletes with support for training as well.
 
+This wrapper program is enabling you to build more advance python charts and debug them.
 Within GC you can create python charts for more information on that see GC wiki page: [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
 
 This project is created based on GC version 3.5 
