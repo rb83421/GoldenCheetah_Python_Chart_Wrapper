@@ -24,12 +24,12 @@ For easy use and interoperability use the same python interpreter that is config
 
 # Setting up the data
 There are a few example script when those are executed in GC you should be able to create/execute your first charts with your own IDE.
-These script can be found in folder `example_extractions_scripts` copy en execute them into a GC python chart.
+These script can be found in folder `Example_extractions_scripts` copy en execute them into a GC python chart.
 
 **Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
 `**
 
-**Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts `activity_ride_plots.py`/`activity_small_example.py`/`trend_small_example.py`.
+**Note: When you have executed them all `activity`/`trend` and `athlete zones` you should be able to execute provided example charts in the folder `Charts`.
 
 If you haven't executed them you probable get an error like:**
 ```python
