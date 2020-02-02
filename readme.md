@@ -23,7 +23,7 @@ For easy use and interoperability use the same python interpreter that is config
 <img src="imgs/pycharm_setup.png" height="400" >
 
 # Setting up the data
-There are a few example script when those are executed in GC you should be able to create/execute your first charts with your own IDE.
+There are a few example extraction script when those are executed in GC you should be able to create/execute your first charts (basic_test_charts) with your own IDE.
 These script can be found in folder `example_extractions_scripts` copy en execute them into a GC python chart.
 
 **Note: update the location where your data needs to be stored: `f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_data.py', "w+")
@@ -62,3 +62,5 @@ Simple copy paste the content of the python file and remove the following line:
 
 And don't forget to share your charts in the cloud db function of GC so other also benefit from it :) 
 
+# TODO
+Create an easy way to create a complete data set from GC aligned with the GC_wrapper (for the more complex charts)
