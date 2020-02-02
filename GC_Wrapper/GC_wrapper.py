@@ -153,8 +153,8 @@ def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
 
 
 def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maximals for a season
-    # Not implemented yet
-    return None
+    from GC_DATA import trend_season_mean_max_all
+    return trend_season_mean_max_all.season_mean_max_all
 
 
 def seasonPeaks(all=False, filter="", compare=False, series="wpk",

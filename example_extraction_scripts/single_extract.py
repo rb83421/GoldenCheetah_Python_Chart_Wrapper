@@ -7,6 +7,7 @@ activity_metrics = GC.activityMetrics()
 zone = GC.athleteZones(date=activity_metrics["date"], sport="bike")
 season_metrics = GC.seasonMetrics(all=True)
 pmc = GC.seasonPmc(all=True, metric="BikeStress")
+season_mean_max = GC.seasonMeanmax(all=True)
 
 # TODO Create popup what is exported where
 
@@ -68,3 +69,12 @@ f.writelines("import datetime \n")
 f.writelines("all_tss_pmc = ")
 f.writelines(str(pmc))
 f.close()
+
+f = open(os.path.join(store_location, "trend_season_mean_max_all.py"), "w+")
+f.writelines("import datetime \n")
+f.writelines("season_mean_max_all = { \n")
+for key in season_mean_max.keys():
+    f.writelines("    '" + str(key) + "': " + str(season_mean_max[key]) + ", \n")
+f.writelines("\n }")
+f.close()
+
