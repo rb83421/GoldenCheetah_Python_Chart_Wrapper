@@ -1,4 +1,4 @@
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import pathlib
 import tempfile

@@ -4,7 +4,7 @@ import tempfile
 
 import plotly
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import plotly.graph_objects as go
 import math

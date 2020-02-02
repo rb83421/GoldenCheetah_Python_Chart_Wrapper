@@ -5,11 +5,11 @@
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
 # V1 - 2020-01-08 - initial chart
-# V2 - 2020-01-11 - Fix threading (kill threads before start multiple dash charts)
+# V2 - 2020-01-11 - Fix threading (kill threads before start multiple dash chart_not_working_yet_after_single_extract)
 # V3 - 2020-01-24 - add wait for server before loading webpage
 # V4 - 2020-02-01 - make linux compatible
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import sys
 import time

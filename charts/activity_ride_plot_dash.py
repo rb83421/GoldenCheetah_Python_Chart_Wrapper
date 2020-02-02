@@ -8,7 +8,7 @@
 # V2 - 2020-01-24 - add wait for server before loading webpage
 # V3 - 2020-02-01 - make linux compatible
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import requests
 import sys
@@ -1018,7 +1018,7 @@ def ride_plot_structured_fig(activity, all_intervals, zone_colors, zones_low, cp
         # define x-axis seconds
         seconds = np.asarray(list(activity['seconds']))
 
-        # Start building charts
+        # Start building chart_not_working_yet_after_single_extract
         fig = go.Figure()
 
         add_ride_plot_legend_data(fig, legend, zone_colors)

@@ -4,7 +4,7 @@
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 # V1 - 2019-09-20 - initial chart
 # V2 - 2019-10-29 - Make linux compatible
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 import pathlib
 import plotly
 from plotly.subplots import make_subplots
@@ -146,7 +146,7 @@ def main():
     medium_duration_index = norm.index(min(norm[medium_duration_bracket[0]:medium_duration_bracket[1]]))
     long_duration_index = norm.index(min(norm[long_duration_bracket[0]:long_duration_bracket[1]]))
 
-    # Start building charts
+    # Start building chart_not_working_yet_after_single_extract
     fig = make_subplots(
         rows=3, cols=3,
         specs=[[{"colspan": 3}, None, None],

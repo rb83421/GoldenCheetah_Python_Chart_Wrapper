@@ -15,7 +15,7 @@
 # V5 - 2019-10-29: Make linux compatible
 # V6 - 2019-11-13: Executable when no Workout_Title
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import plotly
 import pathlib

@@ -9,7 +9,7 @@ Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-
 V1 - 2020-02-01 - Initial chart
 V2 - 2020-02-02 - add ride time line + interval selection
 """
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 from datetime import datetime, timedelta
 import bisect
@@ -34,7 +34,7 @@ slice_distance = 0.1
 # This variably can be used for testing to only display the first x seconds
 temp_duration_selection = None # 360
 
-API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3ZjIzZTc3Zi1iZjkwLTRhYzYtOTU0Mi1lYzdiYWVkYjA2NDgiLCJpZCI6MjE3NzcsInNjb3BlcyI6WyJhc3IiLCJnYyJdLCJpYXQiOjE1ODA1NDg2MTN9.7LSGUM3hBCY9aoyH0O97zPGXIGDpm1dPF7Es3Kkuwi0"
+API_KEY = None
 
 
 def main():

@@ -12,7 +12,7 @@
 # V4 - 2019-12-05 - Change longitude=x latitude=y, add z range and annotations, refactor in functions
 
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import bisect
 import pathlib

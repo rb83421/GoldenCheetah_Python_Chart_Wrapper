@@ -6,17 +6,13 @@
 #
 # V1 - 2019-12-13 - Initial chart
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import pathlib
 import pandas as pd
 import plotly
 import plotly.graph_objs as go
-import plotly.express as px
 import tempfile
-import math
-import numpy as np
-from pathlib import Path
 
 # Define temporary file
 temp_file = tempfile.NamedTemporaryFile(mode="w+t", prefix="GC_", suffix=".html", delete=False)

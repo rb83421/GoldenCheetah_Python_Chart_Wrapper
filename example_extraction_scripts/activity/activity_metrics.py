@@ -1,6 +1,0 @@
-activityMetrics = GC.activityMetrics()
-f = open('D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/activity_xxx_metrics.py', "w+")
-f.writelines("import datetime \n")
-f.writelines("activityMetrics = " )
-f.writelines(str(activityMetrics))
-f.close()

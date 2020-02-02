@@ -1,29 +1,21 @@
-# Ride Plots V5 (Py)
+# Ride Plots Structured V2 (Py)
 # This is an python chart
-# My take on a ride plot
-# currently only for power with a smoothness (moving average) of 20)
+# My take on a ride plot for structured workout/ride
+# Faster than original ride plot
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
-# V1 initial chart
-# V2 - 2019-10-29 - Make linux compatible
-# V3 - 2019-11-11 - Update Error handling
-# V4 - 2019-12-13 - remove plotly express
-#                   add intervals to map
-#                   add timeline to rideplot
-#                   add TSB vs IF
-#                   add medals HR and power
-# V5 - 2020-01-05 - remove plotly bars + default disable interval traces in legend
+# V1 - 2019-12-24 - initial chart (copy of ride plot V4, change ride plot to structured view)
+# V2 - 2020-01-05 - remove plotly bars
 
+import bisect
 
-
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import pathlib
 import pandas as pd
 import plotly
 import plotly.graph_objs as go
 import tempfile
-import math
 import numpy as np
 from pathlib import Path
 import dateutil
@@ -61,6 +53,7 @@ def main():
     zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
     zones_low = zone['zoneslow'][0]
     zone_colors = zone['zonescolor'][0]
+    cp = zone['cp'][0]
 
     season_peaks = pd.DataFrame(GC.seasonMetrics(all=True, filter='Data contains "P"'))
     end_gather_time = datetime.now()
@@ -89,7 +82,7 @@ def main():
         print('Create time in zone power html duration: {}'.format(datetime.now() - before))
         if 'latitude' in activity:
             before = datetime.now()
-            ride_html = ride_plot_html(activity, zone_colors, zones_low)
+            ride_html = ride_plot_html(activity, intervals, zone_colors, zones_low, cp)
             print('Create ride html duration: {}'.format(datetime.now() - before))
         else:
             ride_html = "<h2>Unable to draw activity ride plot no GPS data</h2>"
@@ -482,8 +475,9 @@ def geo_plot_html(activity, intervals, map_interval_type):
                 marker={'size': 10, 'symbol': "circle"},
                 hoverinfo="text",
                 hovertext=hovertext,
+                name=row["name"],
                 visible="legendonly",
-                name=row["name"]
+                # legend=True,
             )
         )
 
@@ -532,113 +526,258 @@ def remove_incorrect_lat_long_values(activity):
     return activity
 
 
-def ride_plot_html(activity, zone_colors, zones_low):
-    fig = go.Figure()
-    # Zone lines:
-    for i in range(len(zones_low)):
+def ride_plot_html(activity, all_intervals,  zone_colors, zones_low, cp):
+    selected_type = None
+    if len(all_intervals['type']) > 0:
+        all_intervals = pd.DataFrame(all_intervals)
+        selected_type = ride_plot_determine_selection_type(all_intervals)
+    else:
+        return "No intervals found in this activity, possible solutions: <br>" \
+                   "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
+
+    if selected_type:
+        # Define chart title
+        title = "Average Power per Interval " \
+                "(CP:" + str(cp) + ") " + \
+                "Selected Interval Type=" + str(selected_type)
+        intervals = all_intervals[all_intervals['type'].str.contains(selected_type)]
+
+        # Identify for every interval the zone color
+        breaks = zones_low
+        zone_colors = zone_colors
+        interval_colors = []
+        avg_power_pct = []
+        for interval in intervals["Average_Power"]:
+            index = bisect.bisect_left(breaks, interval)
+            interval_colors.append(zone_colors[index - 1])
+            avg_power_pct.append(str(round((interval / cp) * 100, 1)) + "%")
+
+        # Add percentage labels
+        legend = []
+        zone_index = 1
+        for zone in breaks:
+            legend.append("Z" + str(zone_index) + "(" + str(zone) + ")")
+            zone_index += 1
+
+        # array of lap names to printed on the x-axis
+        lap_names = np.asarray(intervals["name"])
+        # array of y values
+        watts_y = np.asarray(intervals["Average_Power"])
+        # define x-axis (start time of the intervals)
+        x = np.asarray(intervals["start"])
+        # arrays used for text for every interval
+        distance = np.asarray(intervals["Distance"])
+        stop = np.asarray(intervals["stop"])
+        duration = np.asarray(intervals["Duration"])
+        # duration = [stop - start for stop, start in zip(stop, x)]
+
+        # define x-axis heart rate
+        heart_rate = np.asarray(list(activity['heart.rate']))
+        # define x-axis seconds
+        seconds = np.asarray(list(activity['seconds']))
+
+        # Start building chart_not_working_yet_after_single_extract
+        fig = go.Figure()
+
+        add_ride_plot_legend_data(fig, legend, zone_colors)
+        add_ride_plot_default_layout(fig, title, watts_y)
+
+        if selected_type == "USER" or selected_type == "ALL":
+            add_ride_plot_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names)
+            add_ride_plot_interval_shapes(fig, x, watts_y, duration, lap_names, interval_colors)
+            add_ride_plot_heart_rate_line(fig, seconds, heart_rate)
+        else:
+            x = np.arange(0.5, len(lap_names), 1)
+            add_ride_plot_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names, bar_chart=True)
+            add_ride_plot_interval_bars(fig, x, watts_y, lap_names, interval_colors, selected_type)
+    else:
+        return "Intervals found in this activity, Unable to determine type: <br>" \
+                   "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
+
+    return plotly.offline.plot(fig, output_type='div', auto_open=False)
+
+
+def ride_plot_determine_selection_type(intervals):
+    selected_type = None
+
+    # check is type is selected if not try to do user then all.
+    if not intervals[intervals['selected']].empty:
+        selected_type = intervals[intervals['selected']].type.values[0]
+    else:
+        if intervals['type'].str.contains("USER").any():
+            selected_type = 'USER'
+        elif intervals['type'].str.contains("ALL").any():
+            selected_type = 'ALL'
+
+    return selected_type
+
+
+def add_ride_plot_legend_data(fig, legend, zone_colors):
+    # workaround to get a custom legend
+    for i in np.arange(0, len(legend)):
         fig.add_trace(
             go.Scatter(
-                x=[min(activity['seconds']), max(activity['seconds'])],
-                y=[zones_low[i], zones_low[i]],
-                mode='lines',
-                showlegend=False,
-                line=dict(
-                    color=zone_colors[i],
+
+                x=[None],
+                y=[None],
+                mode='markers',
+                marker=dict(size=10, color=zone_colors[i]),
+                legendgroup=legend[i],
+                showlegend=True,
+                name=legend[i],
+            )
+        )
+
+
+def add_ride_plot_default_layout(fig, title, watts_y):
+    fig.update_layout(
+        title=title,
+        paper_bgcolor=gc_bg_color,
+        plot_bgcolor=gc_bg_color,
+        font=dict(
+            color=gc_text_color,
+            size=chart_title_size
+        ),
+        yaxis=dict(
+            range=[0, max(watts_y) + 100],
+            nticks=int(max(watts_y) / 10),
+            ticks='outside',
+            showgrid=True,
+            zeroline=True,
+            showline=True,
+            gridcolor="grey",
+            title="Watts",
+        ),
+        margin={"r": 50, "t": 50, "l": 50, "b": 5, "pad": 0},
+        legend=dict(
+                orientation="v",
+                x=1.05,
+                xanchor='left',
+                y=1,
+        )
+
+    )
+
+
+def add_ride_plot_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names, bar_chart=False):
+    annotations = []
+    x_label_pos = []
+
+    for i in np.arange(0, len(lap_names)):
+
+        if bar_chart:
+            current_x_pos = x[i]
+            x_label_pos.append(current_x_pos)
+        else:
+            current_x_pos = x[i] + (duration[i] / 2)
+            x_label_pos.append(current_x_pos)
+
+        m, s = divmod(duration[i], 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            duration_formatted = str(int(h)) + "h" + str(int(m)) + "m" + str(int(s)) + "s"
+        elif m > 0:
+            duration_formatted = str(int(m)) + "m" + str(int(s)) + "s"
+        else:
+            duration_formatted = str(int(s)) + "s"
+        annotations.append(
+            dict(
+                x=current_x_pos,
+                y=watts_y[i],
+                xref='x',
+                yref='y',
+                text=str(avg_power_pct[i]) + "<br>" + duration_formatted + "<br>" + str(round(distance[i], 2)) + "km",
+                showarrow=True,
+                arrowhead=7,
+                arrowcolor=gc_text_color,
+                ax=0,
+                ay=-40,
+                font=dict(
+                    color=gc_text_color,
+                    size=12
                 ),
             )
         )
-    activity['smooth_power'] = activity.power.rolling(smooth_value).mean()
-    # TODO for now will first value with the first average (investigate to improve)
-    activity.smooth_power.iloc[0: (smooth_value - 1)] = activity.smooth_power.iloc[smooth_value - 1]
-    # data.value.expanding(1).sum()
+    # end for
 
-    for i in range(len(zones_low)):
-        activity['smooth_zone_power' + str(i)] = activity['smooth_power']
+    fig.update_layout(
+        xaxis=dict(
+            tickvals=x_label_pos,
+            ticktext=lap_names,
+            tickangle=45,
+            showgrid=False,
+            rangemode='nonnegative',
+        ),
+        annotations=annotations,
+    )
 
-        # Last zone all above
-        if i == len(zones_low) - 1:
-            activity.loc[activity.smooth_power <= zones_low[i], 'smooth_zone_power' + str(i)] = None
-        else:
-            activity.loc[(activity.smooth_power <= zones_low[i]) | (
-                    activity.smooth_power > zones_low[i + 1]), 'smooth_zone_power' + str(i)] = None
-    for i in range(len(zones_low)):
-        selector = 'smooth_zone_power' + str(i)
-        power_value_found = False
-        for index in range(len(activity['seconds'])):
-            if not math.isnan(activity[selector][index]) and not power_value_found:
-                power_value_found = True
-                tmp = {'seconds': activity.seconds[index] - 0.00001, selector: 0}
-                activity = activity.append(tmp, ignore_index=True)
-            elif math.isnan(activity[selector][index]) and power_value_found:
-                tmp = {'seconds': activity.seconds[index] + 0.00001, selector: 0}
-                activity[selector].iloc[index] = activity.smooth_power.iloc[index]
-                activity = activity.append(tmp, ignore_index=True)
-                power_value_found = False
-    activity = activity.sort_values(by=['seconds'])
-    for i in range(len(zones_low)):
-        selector = 'smooth_zone_power' + str(i)
-        fig.add_trace(
-            go.Scatter(
-                x=activity['seconds'],
-                y=activity[selector],
-                mode='none',
-                showlegend=True,
-                name="Z" + str(i + 1),
-                fill='tozeroy',
-                fillcolor=zone_colors[i],
-                connectgaps=False,  # override default to connect the gaps
-            )
+
+def add_ride_plot_interval_shapes(fig, x, watts_y, duration, lap_names, interval_colors):
+    # Create rectangles per interval
+    shapes = []
+    x_label_pos = []
+
+    for i in np.arange(0, len(lap_names)):
+        x_label_pos.append(x[i] + (duration[i] / 2))
+
+        shapes.append(
+            {
+                'type': 'rect',
+                'x0': x[i],
+                'y0': 0,
+                'x1': x[i] + duration[i] - 1,
+                'y1': watts_y[i],
+                'fillcolor': interval_colors[i],
+            }
         )
-    # # Print Raw Data
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=activity['seconds'],
-    #         y=activity['power'],
-    #         mode='lines',
-    #         showlegend=True,
-    #         line=dict(
-    #             color='yellow',
-    #         ),
-    #         connectgaps=False  # override default to connect the gaps
-    #     )
-    # )
+    # end for
 
+    fig.update_layout(
+        shapes=shapes,
+    )
+
+
+def add_ride_plot_interval_bars(fig, x, watts_y, lap_names, interval_colors, selected_type):
+    fig.add_trace(
+        go.Bar(
+            x=x,
+            y=watts_y,
+            text=lap_names,
+            marker_color=interval_colors,
+            showlegend=False,
+            name=selected_type
+        )
+    ),
+
+
+def add_ride_plot_heart_rate_line(fig, seconds, heart_rate):
     fig.add_trace(
         go.Scatter(
-            x=activity.seconds,
-            y=activity.smooth_power,
+            x=seconds,
+            y=heart_rate,
             mode='lines',
             showlegend=True,
-            name="power",
+            name="HR",
             line=dict(
-                color='black',
-                width=1,
+                color='Red',
             ),
-            connectgaps=False,  # override default to connect the gaps
+            yaxis='y2'
         )
     )
 
-    tick_values = activity.iloc[::360, :].seconds.tolist()
     fig.update_layout(
-        title="Ride Plot (smooth value:" + str(smooth_value) + ")",
-        paper_bgcolor=gc_bg_color,
-        plot_bgcolor=gc_bg_color,
-        xaxis=dict(
+        yaxis2=dict(
+            range=[0, max(heart_rate) + 10],
+            nticks=int(max(heart_rate) / 5),
+            overlaying='y',
+            anchor='x',
+            side='right',
             showgrid=False,
-            tickvals=tick_values,
-            ticktext=[format_seconds(i) for i in tick_values],
+            title='HR',
+            rangemode='nonnegative',
 
         ),
-        yaxis=dict(
-            showgrid=False
-            ),
-        font=dict(
-            color=gc_text_color,
-            size=chart_title_size,
-        ),
-        margin={"r": 5, "t": 50, "l": 5, "b": 20},
     )
-    return plotly.offline.plot(fig, output_type='div', auto_open=False)
 
 
 def create_end_html_float(activity_metric, medals_power_html, medals_hr_html, map_html, ride_html, tiz_power_html, tiz_hr_html, tsb_if_power_html):
@@ -732,6 +871,7 @@ def create_end_html_float(activity_metric, medals_power_html, medals_hr_html, ma
             }
             .ride_plot {
                 clear:both;
+                height: 500px;
             }
             </style>        
         </head>

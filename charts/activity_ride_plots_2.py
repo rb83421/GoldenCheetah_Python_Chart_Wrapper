@@ -10,7 +10,7 @@
 # V4 - 2019-12-03 - add altitude 3d + change xaxis time line
 
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import pathlib
 import pandas as pd

@@ -15,7 +15,7 @@
 # V5 - 2019-12-08 - Take over auto center from Manuel
 # V6 - 2019-12-08 - Make more robust when only one value in a season
 
-from GC_DATA import GC_wrapper as GC
+from GC_Wrapper import GC_wrapper as GC
 
 import pandas as pd
 import plotly
