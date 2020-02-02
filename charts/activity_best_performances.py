@@ -12,11 +12,8 @@ import dateutil
 from GC_Wrapper import GC_wrapper as GC
 
 import pathlib
-import plotly
-import plotly.graph_objs as go
 import tempfile
 import pandas as pd
-import numpy as np
 from pathlib import Path
 
 # Define temporary file
