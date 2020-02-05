@@ -37,12 +37,34 @@ temp_duration_selection = None # 360
 API_KEY = None
 
 
+def get_zone_blocks(zones, max_watt):
+    zone_blocks = []
+    zones_low = zones['zoneslow'][0]
+    zones_colors = zones['zonescolor'][0]
+
+    for i in range(len(zones_low)):
+        zones_low.append(max_watt)
+        zone_blocks.append(
+            '''
+            var range''' + str(i) + ''' = axis.axisRanges.create();
+            range''' + str(i) + '''.value = ''' + str(zones_low[i]) + ''';
+            range''' + str(i) + '''.endValue = ''' + str(zones_low[i+1]) + ''';
+            range''' + str(i) + '''.axisFill.fillOpacity = 1;
+            range''' + str(i) + '''.axisFill.fill = am4core.color("''' + str(zones_colors[i]) + '''");
+            range''' + str(i) + '''.axisFill.zIndex = -1;
+            '''
+        )
+    return zone_blocks
+
+
 def main():
     activity = GC.activity()
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
     zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
     activity_df = pd.DataFrame(activity, index=activity['seconds'])
+    season_mean_max = GC.seasonMeanmax(all=True)
+    max_watt = max(season_mean_max['power'])
     # For testing purpose select only x number of seconds
     if temp_duration_selection:
         activity_df = activity_df.head(temp_duration_selection)
@@ -53,8 +75,10 @@ def main():
     entities = determine_altitude_entities(activity_df, coloring_mode, coloring_df, slice_distance)
     selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
     czml_block = get_czml_block_str(activity_df, activity_metric)
+    zone_blocks = get_zone_blocks(zones, max_watt)
 
-    html = write_html(entities,selected_interval_entities, czml_block)
+
+    html = write_html(activity_df, activity_metric, entities,selected_interval_entities, czml_block, zone_blocks)
     temp_file.writelines(html)
     temp_file.close()
 
@@ -238,7 +262,10 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
     return e
 
 
-def write_html(entities, selected_interval_entities, czml):
+def write_html(activity_df, activity_metric, entities, selected_interval_entities, czml, zone_blocks):
+    act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
+    start_time_str = act_datetime.isoformat() + "Z"
+
     provided_api_key = ""
     if API_KEY:
         provided_api_key = "Cesium.Ion.defaultAccessToken = '" + API_KEY + "';"
@@ -262,25 +289,59 @@ def write_html(entities, selected_interval_entities, czml):
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 </head>
 <body>
+    <script src="//www.amcharts.com/lib/4/core.js"></script>
+    <script src="//www.amcharts.com/lib/4/charts.js"></script>
+    <script src="//www.amcharts.com/lib/4/maps.js"></script>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
+    <div id="cesiumContainer" ></div>
+    <div id="chartdiv"></div>
+    
+    <script type="text/javascript">
+    ''' + provided_api_key + ''' 
+    ''' + czml + '''
+    var viewer = new Cesium.Viewer('cesiumContainer', {
+        shouldAnimate : true
+    });
+    ''' + str("".join(entities)) + '''
+    
+    ''' + str("".join(selected_interval_entities)) + '''
+    
+    
+    viewer.dataSources.add(Cesium.CzmlDataSource.load(czml)).then(function(ds) {
+        viewer.trackedEntity = ds.entities.getById('path');
+    });
+    
+    viewer.zoomTo(viewer.entities);
+    
+    
+    // Create chart instance
+    var chart = am4core.create(document.getElementById("chartdiv"), am4charts.GaugeChart);
+    var axis = chart.xAxes.push(new am4charts.ValueAxis());
+    axis.min = 0;
+    axis.max = 700;
+    axis.strictMinMax = true;
+    
+    chart.innerRadius = -15;
+    
+    ''' + str("".join(zone_blocks)) + '''
+    
+    
+    var hand = chart.hands.push(new am4charts.ClockHand());
+    hand.value = 0;
+    hand.fill = am4core.color("#FFFFFF");
+    hand.stroke = am4core.color("#FFFFFF");
+    
+    var power = ''' + str(activity_df.power.tolist()) + ''';
+    var lastTime = viewer.clockViewModel.startTime;
+    start_date = new Date("''' + str(start_time_str) + '''")
+    Cesium.knockout.getObservable(viewer.clockViewModel, 'currentTime').subscribe(
+    function(currentTime) {
+          var current_date = new Date(Cesium.JulianDate.toIso8601(currentTime, 0));
+          var dif = current_date.getTime() - start_date.getTime();
+          var seconds_from_dif = dif / 1000;
+          hand.showValue(power[seconds_from_dif]);
+    });
 
-<div id="cesiumContainer" style="width:100%; height:100%;"><div>
-<script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
-<script type="text/javascript">
-''' + provided_api_key + ''' 
-''' + czml + '''
-var viewer = new Cesium.Viewer('cesiumContainer', {
-    shouldAnimate : true
-});
-''' + str("".join(entities)) + '''
-
-''' + str("".join(selected_interval_entities)) + '''
-
-
-viewer.dataSources.add(Cesium.CzmlDataSource.load(czml)).then(function(ds) {
-    viewer.trackedEntity = ds.entities.getById('path');
-});
-
-viewer.zoomTo(viewer.entities);
 </script>
 
 </body>
