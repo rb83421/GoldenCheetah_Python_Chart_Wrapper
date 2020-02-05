@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V2 (Py)
+Altitude 3d Cesium V3 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -8,6 +8,8 @@ Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-
 
 V1 - 2020-02-01 - Initial chart
 V2 - 2020-02-02 - add ride time line + interval selection
+V3 - 2020-02-03 - add power data with am4chart (Todo when data contains gaps power list is not correct)
+
 """
 from GC_Wrapper import GC_wrapper as GC
 
@@ -289,9 +291,9 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 </head>
 <body>
-    <script src="//www.amcharts.com/lib/4/core.js"></script>
-    <script src="//www.amcharts.com/lib/4/charts.js"></script>
-    <script src="//www.amcharts.com/lib/4/maps.js"></script>
+    <script src="https://www.amcharts.com/lib/4/core.js"></script>
+    <script src="https://www.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://www.amcharts.com/lib/4/maps.js"></script>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
     <div id="cesiumContainer" ></div>
     <div id="chartdiv"></div>
@@ -339,7 +341,10 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
           var current_date = new Date(Cesium.JulianDate.toIso8601(currentTime, 0));
           var dif = current_date.getTime() - start_date.getTime();
           var seconds_from_dif = dif / 1000;
-          hand.showValue(power[seconds_from_dif]);
+          var animation = new am4core.Animation(hand, {
+            property: "value",
+            to: power[seconds_from_dif]
+          }, 1000, am4core.ease.cubicOut).start();
     });
 
 </script>
