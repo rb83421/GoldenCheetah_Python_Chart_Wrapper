@@ -1,3 +1,14 @@
+from GC_DATA import trend_season_mean_max_all
+from GC_DATA import athlete_single_extract_current_zones
+from GC_DATA import activity_single_extract_metrics
+from GC_DATA import activity_single_extract_series
+from GC_DATA import activity_single_extract_data
+from GC_DATA import activity_single_extract_intervals
+from GC_DATA import trend_single_extract_all_season_metrics
+from GC_DATA import trend_single_extract_all_tss_pmc
+from GC_DATA import trend_season_peaks_power
+from GC_DATA import trend_season_peaks_wpk
+
 # Types from GoldenCheetah
 from GC_DATA import gc_series_enum as GC_E
 
@@ -57,6 +68,7 @@ SERIES_APOWERKG = GC_E.SERIES_APOWERKG
 SERIES_INDEX = GC_E.SERIES_INDEX
 SERIES_HRV = GC_E.SERIES_HRV
 
+
 def version():  # to get a version string
     # Not implemented yet
     return None
@@ -80,8 +92,7 @@ def athlete():  # to get the athlete details
 
 
 def athleteZones(date=0, sport=""):  # to get zone config
-    from GC_DATA import athlete_single_ectract_current_zones
-    return athlete_single_ectract_current_zones.current_zones
+    return athlete_single_extract_current_zones.current_zones
 
 
 # Activity
@@ -89,13 +100,12 @@ def activities(filter=""):  # to get a list of activities (as dates): #
     # Not implemented yet
     return None
 
+
 def activity(activity=None):  # to get the activity data
-    from GC_DATA import activity_single_extract_data
     return activity_single_extract_data.activity_data
 
 
 def series(type, activity=None):  # to get an individual series data
-    from GC_DATA import activity_single_extract_series
     if type == SERIES_HR:
         return activity_single_extract_series.HR
     elif type == SERIES_WATTS:
@@ -106,6 +116,7 @@ def series(type, activity=None):  # to get an individual series data
         raise Exception('NOT YET Implemented in GC wrapper' + str(type))
     # Not implemented yet
     return None
+
 
 def activityWbal(activity=None):  # to get wbal series data    #Not implemented yet
     # Not implemented yet
@@ -128,8 +139,8 @@ def xdata(name, series, join="repeat", activity=None):  # to get interpolated ac
 
 
 def activityMetrics(compare=False):  # to get the activity metrics and metadata
-    from GC_DATA import activity_single_extract_metrics
     return activity_single_extract_metrics.activity_metrics
+
 
 def activityMeanmax(compare=False):  # to get mean maximals for all activity data
     # Not implemented yet
@@ -137,7 +148,6 @@ def activityMeanmax(compare=False):  # to get mean maximals for all activity dat
 
 
 def activityIntervals(type="", activity=None):  # to get information about activity intervals
-    from GC_DATA import activity_single_extract_intervals
     return activity_single_extract_intervals.activity_intervals
 
 
@@ -148,23 +158,57 @@ def season(all=False, compare=False):  # to get season details
 
 
 def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
-    from GC_DATA import trend_single_extract_all_season_metrics
     return trend_single_extract_all_season_metrics.all_season_metrics
 
 
 def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maximals for a season
-    from GC_DATA import trend_season_mean_max_all
     return trend_season_mean_max_all.season_mean_max_all
 
 
-def seasonPeaks(all=False, filter="", compare=False, series="wpk",
-                duration=5):  # to get activity peaks for a given series and duration
-    # Not implemented yet
-    return None
+def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5):  # to get activity peaks for a given series and duration
+    if not compare and series == "wpk":
+        peak_duration = {1: trend_season_peaks_wpk.season_peaks_wpk_1,
+                         5: trend_season_peaks_wpk.season_peaks_wpk_5,
+                         10: trend_season_peaks_wpk.season_peaks_wpk_10,
+                         15: trend_season_peaks_wpk.season_peaks_wpk_15,
+                         20: trend_season_peaks_wpk.season_peaks_wpk_20,
+                         30: trend_season_peaks_wpk.season_peaks_wpk_30,
+                         60: trend_season_peaks_wpk.season_peaks_wpk_60,
+                         120: trend_season_peaks_wpk.season_peaks_wpk_120,
+                         180: trend_season_peaks_wpk.season_peaks_wpk_180,
+                         300: trend_season_peaks_wpk.season_peaks_wpk_300,
+                         480: trend_season_peaks_wpk.season_peaks_wpk_480,
+                         600: trend_season_peaks_wpk.season_peaks_wpk_600,
+                         1200: trend_season_peaks_wpk.season_peaks_wpk_1200,
+                         1800: trend_season_peaks_wpk.season_peaks_wpk_1800,
+                         3600: trend_season_peaks_wpk.season_peaks_wpk_3600,
+                         5400: trend_season_peaks_wpk.season_peaks_wpk_5400
+                         }
+        return peak_duration.get(duration, "Invalid duration (wpk)")
+    elif not compare and series == "power":
+        peak_duration = {1: trend_season_peaks_power.season_peaks_power_1,
+                         5: trend_season_peaks_power.season_peaks_power_5,
+                         10: trend_season_peaks_power.season_peaks_power_10,
+                         15: trend_season_peaks_power.season_peaks_power_15,
+                         20: trend_season_peaks_power.season_peaks_power_20,
+                         30: trend_season_peaks_power.season_peaks_power_30,
+                         60: trend_season_peaks_power.season_peaks_power_60,
+                         120: trend_season_peaks_power.season_peaks_power_120,
+                         180: trend_season_peaks_power.season_peaks_power_180,
+                         300: trend_season_peaks_power.season_peaks_power_300,
+                         480: trend_season_peaks_power.season_peaks_power_480,
+                         600: trend_season_peaks_power.season_peaks_power_600,
+                         1200: trend_season_peaks_power.season_peaks_power_1200,
+                         1800: trend_season_peaks_power.season_peaks_power_1800,
+                         3600: trend_season_peaks_power.season_peaks_power_3600,
+                         5400: trend_season_peaks_power.season_peaks_power_5400
+                         }
+        return peak_duration.get(duration, "Invalid duration (power)")
+    else:
+        raise Exception('NOT YET Implemented in GC wrapper' + str(type))
 
 
 def seasonPmc(all=False, metric="TSS"):  # to get PMC data for any given metric
-    from GC_DATA import trend_single_extract_all_tss_pmc
     if metric == "TSS" or metric == "BikeStress":
         return trend_single_extract_all_tss_pmc.all_tss_pmc
 
