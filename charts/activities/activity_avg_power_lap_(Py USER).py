@@ -1,20 +1,20 @@
-# Average HR Lap V3 (Py)
-# This python chart shows the average heart rate per interval for the selected interval type.
-# With every interval also the percentage of your LTHR, duration and distance are shown.
+# Average Power Lap V3 (Py)
+# This python chart shows the average power per interval for the selected interval type.
+# With every interval also the percentage of your CP, duration and distance are shown.
 # Also HR of the ride is displayed, this can be toggled off.
 
 # V1 - 2019-07-16 - initial chart
 # V2 - 2019-10-06 - interval selection and refactor to functions.
 # V3 - 2019-10-29 - Make linux compatible
+
 from GC_Wrapper import GC_wrapper as GC
-import bisect
 import pathlib
+import bisect
 import plotly
 import plotly.graph_objs as go
 import numpy as np
 import tempfile
 import pandas as pd
-
 
 # Define temporary file
 temp_file = tempfile.NamedTemporaryFile(mode="w+t", prefix="GC_", suffix=".html", delete=False)
@@ -24,11 +24,6 @@ gc_bg_color = 'rgb(52,52,52)'
 # Define GC Text color
 gc_text_color = 'rgb(255,255,255)'
 
-# HR percentage zone taken over from Options->Athlete->Zones-Heartrate Zones->Default
-hr_zone_pct = [0, 68, 83, 94, 105]
-zone_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
-
-
 
 def main():
     # Get data
@@ -36,8 +31,6 @@ def main():
     activity = GC.activity(activity=None)
     zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
     all_intervals = GC.activityIntervals()
-    lthr = zone["lthr"][0]
-    hrmax = zone["hrmax"][0]
 
     selected_type = None
     if 'power' in activity:
@@ -45,27 +38,27 @@ def main():
             all_intervals = pd.DataFrame(all_intervals)
             selected_type = determine_selection_type(all_intervals)
         else:
-            fail_msg = "No intervals found in this activity, possible solutions: <br>" \
+            fail_msg = "No intervals found in this activities, possible solutions: <br>" \
                        "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
     else:
-        fail_msg = "No power data found in this activity "
+        fail_msg = "No power data found in this activities "
 
     if selected_type:
         # Define chart title
-        title = "Average Heart Rate per Interval " \
-                "(LTHR:" + str(lthr) + ") " + \
+        title = "Average Power per Interval " \
+                "(CP:" + str(zone["cp"][0]) + ") " + \
                 "Selected Interval Type=" + str(selected_type)
-
         intervals = all_intervals[all_intervals['type'].str.contains(selected_type)]
 
         # Identify for every interval the zone color
-        breaks = [round(zone["lthr"][0] * hr / 100, 0) for hr in hr_zone_pct]
+        breaks = zone["zoneslow"][0]
+        zone_colors = zone["zonescolor"][0]
         interval_colors = []
-        avg_hr_pct = []
-        for interval in intervals["Average_Heart_Rate"]:
+        avg_power_pct = []
+        for interval in intervals["Average_Power"]:
             index = bisect.bisect_left(breaks, interval)
             interval_colors.append(zone_colors[index - 1])
-            avg_hr_pct.append(str(round((interval / lthr) * 100, 1)) + "%")
+            avg_power_pct.append(str(round((interval / zone["cp"][0]) * 100, 1)) + "%")
 
         # Add percentage labels
         legend = []
@@ -77,7 +70,7 @@ def main():
         # array of lap names to printed on the x-axis
         lap_names = np.asarray(intervals["name"])
         # array of y values
-        avg_hr_y = np.asarray(intervals["Average_Heart_Rate"])
+        watts_y = np.asarray(intervals["Average_Power"])
         # define x-axis (start time of the intervals)
         x = np.asarray(intervals["start"])
         # arrays used for text for every interval
@@ -95,20 +88,16 @@ def main():
         fig = go.Figure()
 
         add_legend_data(fig, legend, zone_colors)
-        add_default_layout(fig, title, hrmax)
+        add_default_layout(fig, title, watts_y)
 
         if selected_type == "USER" or selected_type == "ALL":
-            add_annotation(fig, x, avg_hr_y, duration, distance, avg_hr_pct, lap_names)
-            add_interval_shapes(fig, x, avg_hr_y, duration, lap_names, interval_colors)
-            add_horizontal_line(fig, x, stop, lthr, 'Blue', 'LTHR')
-            add_horizontal_line(fig, x, stop, hrmax, 'Red', 'MAX')
+            add_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names)
+            add_interval_shapes(fig, x, watts_y, duration, lap_names, interval_colors)
             add_heart_rate_line(fig, seconds, heart_rate)
         else:
             x = np.arange(0.5, len(lap_names), 1)
-            add_horizontal_line(fig, x, x, lthr, 'Blue', 'LTHR')
-            add_horizontal_line(fig, x, x, hrmax, 'Red', 'MAX')
-            add_annotation(fig, x, avg_hr_y, duration, distance, avg_hr_pct, lap_names, bar_chart=True)
-            add_interval_bars(fig, x, avg_hr_y, lap_names, interval_colors, selected_type)
+            add_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names, bar_chart=True)
+            add_interval_bars(fig, x, watts_y, lap_names, interval_colors, selected_type)
 
         plotly.offline.plot(fig, auto_open=False, filename=temp_file.name)
 
@@ -149,7 +138,7 @@ def add_legend_data(fig, legend, zone_colors):
         )
 
 
-def add_default_layout(fig, title, hr_max):
+def add_default_layout(fig, title, watts_y):
     fig.update_layout(
         title=title,
         paper_bgcolor=gc_bg_color,
@@ -159,14 +148,14 @@ def add_default_layout(fig, title, hr_max):
             size=12
         ),
         yaxis=dict(
-            range=[0, hr_max + 10],
-            nticks=int(hr_max / 4),
+            range=[0, max(watts_y) + 100],
+            nticks=int(max(watts_y) / 10),
             ticks='outside',
             showgrid=True,
             zeroline=True,
             showline=True,
             gridcolor="grey",
-            title="BPM",
+            title="Watts",
         ),
         margin=go.layout.Margin(
             l=100,
@@ -178,22 +167,7 @@ def add_default_layout(fig, title, hr_max):
     )
 
 
-def add_horizontal_line(fig, start, stop, value, color, name):
-    fig.add_trace(
-        go.Scatter(
-            x=[min(start), max(stop)],
-            y=[value, value],
-            mode='lines',
-            showlegend=True,
-            name=name,
-            line=dict(
-                color=color,
-            )
-        )
-    )
-
-
-def add_annotation(fig, x, avg_hr_y, duration, distance, avg_power_pct, lap_names, bar_chart=False):
+def add_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names, bar_chart=False):
     annotations = []
     x_label_pos = []
 
@@ -217,7 +191,7 @@ def add_annotation(fig, x, avg_hr_y, duration, distance, avg_power_pct, lap_name
         annotations.append(
             dict(
                 x=current_x_pos,
-                y=avg_hr_y[i],
+                y=watts_y[i],
                 xref='x',
                 yref='y',
                 text=str(avg_power_pct[i]) + "<br>" + duration_formatted + "<br>" + str(round(distance[i], 2)) + "km",
@@ -246,7 +220,7 @@ def add_annotation(fig, x, avg_hr_y, duration, distance, avg_power_pct, lap_name
     )
 
 
-def add_interval_shapes(fig, x, avg_hr_y, duration, lap_names, interval_colors):
+def add_interval_shapes(fig, x, watts_y, duration, lap_names, interval_colors):
     # Create rectangles per interval
     shapes = []
     x_label_pos = []
@@ -260,8 +234,7 @@ def add_interval_shapes(fig, x, avg_hr_y, duration, lap_names, interval_colors):
                 'x0': x[i],
                 'y0': 0,
                 'x1': x[i] + duration[i] - 1,
-                'y1': avg_hr_y[i],
-                'layer': 'below',
+                'y1': watts_y[i],
                 'fillcolor': interval_colors[i],
             }
         )
@@ -296,7 +269,22 @@ def add_heart_rate_line(fig, seconds, heart_rate):
             line=dict(
                 color='Red',
             ),
+            yaxis='y2'
         )
+    )
+
+    fig.update_layout(
+        yaxis2=dict(
+            range=[0, max(heart_rate) + 10],
+            nticks=int(max(heart_rate) / 5),
+            overlaying='y',
+            anchor='x',
+            side='right',
+            showgrid=False,
+            title='HR',
+            rangemode='nonnegative',
+
+        ),
     )
 
 
@@ -316,7 +304,7 @@ def create_unavailable_html(fail_msg):
             </style>
         </head>
         <body>
-
+        
         <h1>Unable to draw chart</h1>
         """,
                      str(fail_msg),

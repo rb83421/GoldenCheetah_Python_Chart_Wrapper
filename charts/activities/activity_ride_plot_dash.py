@@ -188,7 +188,7 @@ def main():
             fig = ride_plot_structured_fig(activity, intervals, zone_colors, zones_low, cp, selected_interval_type)
         else:
             fig = go.Figure()
-            fig.update_layout(title="Unable to draw activity ride plot (no power data)")
+            fig.update_layout(title="Unable to draw activities ride plot (no power data)")
             fig.update_layout(empty_chart_dict)
         print('Create ride plot duration: {}'.format(datetime.now() - before))
         return fig
@@ -202,7 +202,7 @@ def main():
             fig = ride_plot_smooth(activity, zone_colors, zones_low, smooth_value=int(smooth_value))
         else:
             fig = go.Figure()
-            fig.update_layout(title="Unable to draw activity ride plot (no power data)")
+            fig.update_layout(title="Unable to draw activities ride plot (no power data)")
             fig.update_layout(empty_chart_dict)
         print('Create ride plot duration: {}'.format(datetime.now() - before))
         return fig
@@ -418,7 +418,7 @@ def get_medals_html(activity, activity_metric, season_peaks, HR=False):
             if HR:
                 metric_name = metric_name + "_HR"
 
-            # remove peaks after activity date
+            # remove peaks after activities date
             all_time_season_peak = season_peaks.loc[
                 (season_peaks.date < activity_metric['date'])]
             last_x_months_date = activity_metric['date'] - dateutil.relativedelta.relativedelta(
@@ -976,7 +976,7 @@ def ride_plot_structured_fig(activity, all_intervals, zone_colors, zones_low, cp
     if len(all_intervals['type']) > 0:
         all_intervals = pd.DataFrame(all_intervals)
     else:
-        return "No intervals found in this activity, possible solutions: <br>" \
+        return "No intervals found in this activities, possible solutions: <br>" \
                "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
 
     if selected_type:

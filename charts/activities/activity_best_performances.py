@@ -41,7 +41,7 @@ def main():
     rows = ""
     for i in range(len(peak_duration)):
         metric_name = metric_duration_name[i] + "_Peak_Power"
-        # remove peaks after activity date
+        # remove peaks after activities date
         all_time_season_peak = season_peaks.loc[
             (season_peaks.date <= activity_metric['date'])]
         last_x_months_date = activity_metric['date'] - dateutil.relativedelta.relativedelta(

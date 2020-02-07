@@ -11,6 +11,8 @@ from GC_DATA import trend_single_extract_all_tss_pmc
 from GC_DATA import trend_season_peaks_power
 from GC_DATA import trend_season_peaks_wpk
 
+from GC_DATA import trend_season_compare_peaks_power
+from GC_DATA import trend_season_compare_peaks_wpk
 
 from GC_DATA import trend_compare_seasons
 from GC_DATA import trend_all_seasons
@@ -106,9 +108,9 @@ def activities(filter=""):  # to get a list of activities (as dates): #
     return activity_list.activity_list
 
 
-def activity(activity=None):  # to get the activity data
+def activity(activity=None):  # to get the activities data
     if activity:
-        print("Currently only giving back one activity")
+        print("Currently only giving back one activities")
     return activity_single_extract_data.activity_data
 
 
@@ -130,31 +132,31 @@ def activityWbal(activity=None):  # to get wbal series data    #Not implemented 
     return None
 
 
-def xdataNames(name="", activity=None):  # to get activity xdata series names
+def xdataNames(name="", activity=None):  # to get activities xdata series names
     # Not implemented yet
     return None
 
 
-def xdataSeries(name, series, activity=None):  # to get activity xdata series in its own sampling interval
+def xdataSeries(name, series, activity=None):  # to get activities xdata series in its own sampling interval
     # Not implemented yet
     return None
 
 
-def xdata(name, series, join="repeat", activity=None):  # to get interpolated activity xdata series
+def xdata(name, series, join="repeat", activity=None):  # to get interpolated activities xdata series
     # Not implemented yet
     return None
 
 
-def activityMetrics(compare=False):  # to get the activity metrics and metadata
+def activityMetrics(compare=False):  # to get the activities metrics and metadata
     return activity_single_extract_metrics.activity_metrics
 
 
-def activityMeanmax(compare=False):  # to get mean maximals for all activity data
+def activityMeanmax(compare=False):  # to get mean maximals for all activities data
     # Not implemented yet
     return None
 
 
-def activityIntervals(type="", activity=None):  # to get information about activity intervals
+def activityIntervals(type="", activity=None):  # to get information about activities intervals
     return activity_single_extract_intervals.activity_intervals
 
 
@@ -177,7 +179,7 @@ def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maxi
     return trend_season_mean_max_all.season_mean_max_all
 
 
-def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5):  # to get activity peaks for a given series and duration
+def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5):  # to get activities peaks for a given series and duration
     if not compare and series == "wpk":
         peak_duration = {1: trend_season_peaks_wpk.season_peaks_wpk_1,
                          3: trend_season_peaks_wpk.season_peaks_wpk_3,
@@ -203,7 +205,7 @@ def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5): 
         return peak_duration.get(duration, "Invalid duration (wpk)")
     elif not compare and series == "power":
         peak_duration = {1: trend_season_peaks_power.season_peaks_power_1,
-                         3: trend_season_peaks_wpk.season_peaks_wpk_3,
+                         3: trend_season_peaks_power.season_peaks_power_3,
                          5: trend_season_peaks_power.season_peaks_power_5,
                          10: trend_season_peaks_power.season_peaks_power_10,
                          15: trend_season_peaks_power.season_peaks_power_15,
@@ -213,15 +215,61 @@ def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5): 
                          120: trend_season_peaks_power.season_peaks_power_120,
                          180: trend_season_peaks_power.season_peaks_power_180,
                          300: trend_season_peaks_power.season_peaks_power_300,
-                         360: trend_season_peaks_wpk.season_peaks_wpk_360,
+                         360: trend_season_peaks_power.season_peaks_power_360,
                          480: trend_season_peaks_power.season_peaks_power_480,
                          600: trend_season_peaks_power.season_peaks_power_600,
-                         900: trend_season_peaks_wpk.season_peaks_wpk_900,
+                         900: trend_season_peaks_power.season_peaks_power_900,
                          1200: trend_season_peaks_power.season_peaks_power_1200,
                          1800: trend_season_peaks_power.season_peaks_power_1800,
-                         2400: trend_season_peaks_wpk.season_peaks_wpk_2400,
+                         2400: trend_season_peaks_power.season_peaks_power_2400,
                          3600: trend_season_peaks_power.season_peaks_power_3600,
                          5400: trend_season_peaks_power.season_peaks_power_5400
+                         }
+        return peak_duration.get(duration, "Invalid duration (power)")
+    elif compare and series == "wpk":
+            peak_duration = {1: trend_season_compare_peaks_wpk.season_peaks_wpk_1,
+                             3: trend_season_compare_peaks_wpk.season_peaks_wpk_3,
+                             5: trend_season_compare_peaks_wpk.season_peaks_wpk_5,
+                             10: trend_season_compare_peaks_wpk.season_peaks_wpk_10,
+                             15: trend_season_compare_peaks_wpk.season_peaks_wpk_15,
+                             20: trend_season_compare_peaks_wpk.season_peaks_wpk_20,
+                             30: trend_season_compare_peaks_wpk.season_peaks_wpk_30,
+                             60: trend_season_compare_peaks_wpk.season_peaks_wpk_60,
+                             120: trend_season_compare_peaks_wpk.season_peaks_wpk_120,
+                             180: trend_season_compare_peaks_wpk.season_peaks_wpk_180,
+                             300: trend_season_compare_peaks_wpk.season_peaks_wpk_300,
+                             360: trend_season_compare_peaks_wpk.season_peaks_wpk_360,
+                             480: trend_season_compare_peaks_wpk.season_peaks_wpk_480,
+                             600: trend_season_compare_peaks_wpk.season_peaks_wpk_600,
+                             900: trend_season_compare_peaks_wpk.season_peaks_wpk_900,
+                             1200: trend_season_compare_peaks_wpk.season_peaks_wpk_1200,
+                             1800: trend_season_compare_peaks_wpk.season_peaks_wpk_1800,
+                             2400: trend_season_compare_peaks_wpk.season_peaks_wpk_2400,
+                             3600: trend_season_compare_peaks_wpk.season_peaks_wpk_3600,
+                             5400: trend_season_compare_peaks_wpk.season_peaks_wpk_5400
+                             }
+            return peak_duration.get(duration, "Invalid duration (wpk)")
+    elif compare and series == "power":
+        peak_duration = {1: trend_season_compare_peaks_power.season_peaks_power_1,
+                         3: trend_season_compare_peaks_power.season_peaks_power_3,
+                         5: trend_season_compare_peaks_power.season_peaks_power_5,
+                         10: trend_season_compare_peaks_power.season_peaks_power_10,
+                         15: trend_season_compare_peaks_power.season_peaks_power_15,
+                         20: trend_season_compare_peaks_power.season_peaks_power_20,
+                         30: trend_season_compare_peaks_power.season_peaks_power_30,
+                         60: trend_season_compare_peaks_power.season_peaks_power_60,
+                         120: trend_season_compare_peaks_power.season_peaks_power_120,
+                         180: trend_season_compare_peaks_power.season_peaks_power_180,
+                         300: trend_season_compare_peaks_power.season_peaks_power_300,
+                         360: trend_season_compare_peaks_power.season_peaks_power_360,
+                         480: trend_season_compare_peaks_power.season_peaks_power_480,
+                         600: trend_season_compare_peaks_power.season_peaks_power_600,
+                         900: trend_season_compare_peaks_power.season_peaks_power_900,
+                         1200: trend_season_compare_peaks_power.season_peaks_power_1200,
+                         1800: trend_season_compare_peaks_power.season_peaks_power_1800,
+                         2400: trend_season_compare_peaks_power.season_peaks_power_2400,
+                         3600: trend_season_compare_peaks_power.season_peaks_power_3600,
+                         5400: trend_season_compare_peaks_power.season_peaks_power_5400
                          }
         return peak_duration.get(duration, "Invalid duration (power)")
     else:

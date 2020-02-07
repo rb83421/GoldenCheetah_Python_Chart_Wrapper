@@ -75,16 +75,16 @@ def main():
         altitude_html = plotly.offline.plot(fig, output_type='div', auto_open=False)
 
     else:
-        geo_html = "<h2>Unable to draw activity ride plot no GPS data</h2>"
+        geo_html = "<h2>Unable to draw activities ride plot no GPS data</h2>"
 
     if 'power' in activity:
         tiz_power_html = tiz_html(activity_metric, zone, type="L")
         if 'latitude' in activity:
             ride_html = ride_plot_html(activity, zone_colors, zones_low)
         else:
-            ride_html = "<h2>Unable to draw activity ride plot no GPS data</h2>"
+            ride_html = "<h2>Unable to draw activities ride plot no GPS data</h2>"
     else:
-        ride_html = "<h2>Unable to draw activity ride plot (no power data)</h2>"
+        ride_html = "<h2>Unable to draw activities ride plot (no power data)</h2>"
         tiz_power_html = "<h2>Unable to draw Time in Zone power (no power data)</h2>"
 
     if 'heart.rate' in activity:
@@ -562,8 +562,8 @@ def ride_plot_html(activity, zone_colors, zones_low):
     # # Print Raw Data
     # fig.add_trace(
     #     go.Scatter(
-    #         x=activity['seconds'],
-    #         y=activity['power'],
+    #         x=activities['seconds'],
+    #         y=activities['power'],
     #         mode='lines',
     #         showlegend=True,
     #         line=dict(

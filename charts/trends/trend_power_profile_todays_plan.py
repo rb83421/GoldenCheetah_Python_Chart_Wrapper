@@ -8,7 +8,7 @@
 # V1 - 2019-07-21: Initial Chart
 # V2 - 2019-07-26: add different lengths  3s, 10s, 30s, 1m,3m, 6m,15m, 40m, 1h(FT)
 # V3 - 2019-10-16: * refactor use of functions,
-#                  * add activity date and names
+#                  * add activities date and names
 #                  * add 20m FTP duration
 #                  * use current weight of athlete
 # V4 - 2019-10-22: small fix best ever hover text
@@ -333,7 +333,7 @@ def determine_season_peaks(date_ranges_peaks, selected_date_ranges, all_season_m
                             get_category_index_value(current_duration, peak[0], mmpsdf, power_profile_category))
                         current_date_range_y_values.append(max(peak[0]['peak_wpk_' + str(current_duration)]))
 
-                        # get activity dates
+                        # get activities dates
                         index = peak[0]['peak_wpk_' + str(current_duration)].index(
                             max(peak[0]['peak_wpk_' + str(current_duration)]))
                         current_date = peak[0]['datetime'][index]
@@ -347,7 +347,7 @@ def determine_season_peaks(date_ranges_peaks, selected_date_ranges, all_season_m
                 current_date_range_y_values.append(
                     max(selected_date_range_peaks_of_duration[0][0]['peak_wpk_' + str(current_duration)]))
 
-                # get activity dates
+                # get activities dates
                 index = selected_date_range_peaks_of_duration[0][0]['peak_wpk_' + str(current_duration)].index(
                     max(selected_date_range_peaks_of_duration[0][0]['peak_wpk_' + str(current_duration)]))
                 current_date = selected_date_range_peaks_of_duration[0][0]['datetime'][index]
@@ -381,7 +381,7 @@ def determine_best_peak(best_peaks, all_season_metrics, durations, mmpsdf, power
                                                                      mmpsdf, power_profile_category))
         best_peaks_y_values.append(max_current_best_peak)
 
-        # get activity dates
+        # get activities dates
         index = current_best_peaks['peak_wpk_' + str(current_duration)].index(max_current_best_peak)
         current_date = current_best_peaks['datetime'][index]
         best_activity_dates.append(current_date)

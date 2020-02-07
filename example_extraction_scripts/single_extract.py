@@ -7,10 +7,10 @@ store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
 athlete = GC.athlete()
 try:
     athlete_body = GC.seasonMeasures(all=True, group="Body")
-    athlete_body = True
+    athlete_body_found = True
 except SystemError:
     print("No body measurement found create empty file")
-    athlete_body = False
+    athlete_body_found = False
 activity = GC.activity()
 activity_list = GC.activities( filter='Data contains "P" and Data contains "H"')
 activity_intervals = GC.activityIntervals()
@@ -39,7 +39,7 @@ def write_athlete_data():
     f.close()
 
 
-def write_athlete_body(athlete_body_measurement):
+def write_athlete_body(athlete_body_measurement=False):
     f = open(os.path.join(store_location, "athlete_body_data.py"), "w+")
     f.writelines("import datetime\n")
     if athlete_body_measurement:
@@ -168,7 +168,7 @@ def write_peaks_wpk():
 
 if __name__ == "__main__":
     p = [
-        threading.Thread(target=write_athlete_body, args=(athlete_body,)),
+        threading.Thread(target=write_athlete_body, args=[athlete_body_found]),
         threading.Thread(target=write_athlete_data, args=()),
         threading.Thread(target=write_activity_list, args=()),
         threading.Thread(target=write_activity_data, args=()),

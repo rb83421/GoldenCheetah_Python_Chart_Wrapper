@@ -23,9 +23,23 @@ For easy use and interoperability use the same python interpreter that is config
 <img src="imgs/pycharm_setup.png" height="400" >
 
 # Setting up the data
+Depending on the amount of data these extract can take up to an few minutes.
+Both step need to executed:
+## 1 Extract single activity (this also extract some overall data and athlete information)
 In example extraction directory there is an single_extract script copy this script into an python chart in GC and update the `store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'`.
-Select and activity you want to use (Tip also select and interval this is also used in some of the charts).
-After this the GC_DATA directory should be filled now and you are able to execute an chart (Tip start with activity_small_example.py and/or trend_small_example.py)
+Select and activity you want to use it will generate the data to the configured location.
+
+**Tip** also select and interval this is also used in some of the charts.
+
+## 2 Extract compared trends information (season)
+For this you need to switch in GC to the Trends view select 2 or more 'Date range' (how can be found in [UG_Compare Pane_General](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Compare-Pane_General).
+<img src=https://raw.githubusercontent.com/GoldenCheetah/GoldenCheetah/master/doc/wiki/ComparePane_DragDrop.gif>
+Now create an python chart in the trends view in GC and copy the trends_extract_with_compare content to the GC python chart.
+
+**Tip** Don't forget to turn the compare on.
+
+After you have followed the two step you should be able to execute the charts
+
 
 # Be creative :)
 Sometimes you need special data you can implement this in the GC_wrapper functions. A small example is given below to get 
@@ -44,8 +58,7 @@ Simple copy paste the content of the python file and remove the following line:
  
  `from GC_Wrapper import GC_wrapper as GC`
 
-And don't forget to share your charts in the cloud db function of GC so other also benefit from it :) 
+And don't forget to share your charts in the cloud db function of GC so other also benefit from it :)
 
 # TODO
-Create an easy way to create a complete data set from GC aligned with the GC_wrapper (for the more complex charts)
-Create an popup what and is extracted where (give the possibility to cancel) 
+* Create an popup what and is extracted where (give the possibility to cancel) 

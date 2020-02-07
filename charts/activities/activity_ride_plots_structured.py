@@ -74,7 +74,7 @@ def main():
         print('Create map html duration: {}'.format(datetime.now() - before))
 
     else:
-        geo_html = "<h2>Unable to draw activity ride plot no GPS data</h2>"
+        geo_html = "<h2>Unable to draw activities ride plot no GPS data</h2>"
 
     if 'power' in activity:
         before = datetime.now()
@@ -85,7 +85,7 @@ def main():
             ride_html = ride_plot_html(activity, intervals, zone_colors, zones_low, cp)
             print('Create ride html duration: {}'.format(datetime.now() - before))
         else:
-            ride_html = "<h2>Unable to draw activity ride plot no GPS data</h2>"
+            ride_html = "<h2>Unable to draw activities ride plot no GPS data</h2>"
         before = datetime.now()
         tsb_if_power_html = tsb_if_html(activity_metric, pmc)
         print('Create tsb vs if html duration: {}'.format(datetime.now() - before))
@@ -93,7 +93,7 @@ def main():
         medals_power_html = get_medals_html(activity_metric, season_peaks)
         print('Create medals power html duration: {}'.format(datetime.now() - before))
     else:
-        ride_html = "<h2>Unable to draw activity ride plot (no power data)</h2>"
+        ride_html = "<h2>Unable to draw activities ride plot (no power data)</h2>"
         tiz_power_html = "<h2>Unable to draw Time in Zone power (no power data)</h2>"
         tsb_if_power_html = "<h2>Unable to draw TSB vs IF (no power data)</h2>"
         medals_power_html = ""
@@ -133,7 +133,7 @@ def get_medals_html(activity_metric, season_peaks, HR=False):
         if HR:
             metric_name = metric_name + "_HR"
 
-        # remove peaks after activity date
+        # remove peaks after activities date
         all_time_season_peak = season_peaks.loc[
             (season_peaks.date < activity_metric['date'])]
         last_x_months_date = activity_metric['date'] - dateutil.relativedelta.relativedelta(
@@ -532,7 +532,7 @@ def ride_plot_html(activity, all_intervals,  zone_colors, zones_low, cp):
         all_intervals = pd.DataFrame(all_intervals)
         selected_type = ride_plot_determine_selection_type(all_intervals)
     else:
-        return "No intervals found in this activity, possible solutions: <br>" \
+        return "No intervals found in this activities, possible solutions: <br>" \
                    "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
 
     if selected_type:
@@ -591,7 +591,7 @@ def ride_plot_html(activity, all_intervals,  zone_colors, zones_low, cp):
             add_ride_plot_annotation(fig, x, watts_y, duration, distance, avg_power_pct, lap_names, bar_chart=True)
             add_ride_plot_interval_bars(fig, x, watts_y, lap_names, interval_colors, selected_type)
     else:
-        return "Intervals found in this activity, Unable to determine type: <br>" \
+        return "Intervals found in this activities, Unable to determine type: <br>" \
                    "Create manual intervals or enable interval auto-discovery via Tools->Options->Intervals"
 
     return plotly.offline.plot(fig, output_type='div', auto_open=False)
