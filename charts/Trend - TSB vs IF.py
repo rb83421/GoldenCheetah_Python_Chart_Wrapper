@@ -75,7 +75,7 @@ def main():
         # norm = [a + ((number - minimal) * (b - a) / (maximal - minimal)) for number in residual]
 
         # Determine hovertext
-        titles = "Title: " + merged_metrics.Workout_Title if 'Workout_Title' in merged_metrics else ""
+        titles = "Title: " + merged_metrics.Workout_Title.map(str) if 'Workout_Title' in merged_metrics else ""
         merged_metrics['date'] = pd.to_datetime(merged_metrics.date)
         merged_metrics['hovertext'] = "Date: " + merged_metrics.date.dt.strftime('%d-%m-%Y').map(str) + "<br>" + \
                                       "TSS: " + merged_metrics.BikeStress.astype(int).map(str) + "<br>" + \

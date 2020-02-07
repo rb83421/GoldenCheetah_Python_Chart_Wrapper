@@ -1,13 +1,20 @@
+from GC_DATA import athlete_data
 from GC_DATA import trend_season_mean_max_all
 from GC_DATA import athlete_single_extract_current_zones
 from GC_DATA import activity_single_extract_metrics
 from GC_DATA import activity_single_extract_series
 from GC_DATA import activity_single_extract_data
 from GC_DATA import activity_single_extract_intervals
+from GC_DATA import activity_list
 from GC_DATA import trend_single_extract_all_season_metrics
 from GC_DATA import trend_single_extract_all_tss_pmc
 from GC_DATA import trend_season_peaks_power
 from GC_DATA import trend_season_peaks_wpk
+
+
+from GC_DATA import trend_compare_seasons
+from GC_DATA import trend_all_seasons
+from GC_DATA import trend_compare_seasons_metrics
 
 # Types from GoldenCheetah
 from GC_DATA import gc_series_enum as GC_E
@@ -87,8 +94,7 @@ def webpage(filename):  # to set the webpage
 
 # Athlete
 def athlete():  # to get the athlete details
-    # Not implemented yet
-    return None
+    return athlete_data.athlete_data
 
 
 def athleteZones(date=0, sport=""):  # to get zone config
@@ -97,11 +103,12 @@ def athleteZones(date=0, sport=""):  # to get zone config
 
 # Activity
 def activities(filter=""):  # to get a list of activities (as dates): #
-    # Not implemented yet
-    return None
+    return activity_list.activity_list
 
 
 def activity(activity=None):  # to get the activity data
+    if activity:
+        print("Currently only giving back one activity")
     return activity_single_extract_data.activity_data
 
 
@@ -153,12 +160,17 @@ def activityIntervals(type="", activity=None):  # to get information about activ
 
 # Trends
 def season(all=False, compare=False):  # to get season details
-    # Not implemented yet
-    return None
+    if all and not compare:
+        return trend_all_seasons.all_seasons
+    if compare:
+        return trend_compare_seasons.selected_seasons
 
 
 def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
-    return trend_single_extract_all_season_metrics.all_season_metrics
+    if not compare:
+        return trend_single_extract_all_season_metrics.all_season_metrics
+    else:
+        return trend_compare_seasons_metrics.compare_seasons_metrics
 
 
 def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maximals for a season
@@ -168,6 +180,7 @@ def seasonMeanmax(all=False, filter="", compare=False):  # to get best mean maxi
 def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5):  # to get activity peaks for a given series and duration
     if not compare and series == "wpk":
         peak_duration = {1: trend_season_peaks_wpk.season_peaks_wpk_1,
+                         3: trend_season_peaks_wpk.season_peaks_wpk_3,
                          5: trend_season_peaks_wpk.season_peaks_wpk_5,
                          10: trend_season_peaks_wpk.season_peaks_wpk_10,
                          15: trend_season_peaks_wpk.season_peaks_wpk_15,
@@ -177,16 +190,20 @@ def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5): 
                          120: trend_season_peaks_wpk.season_peaks_wpk_120,
                          180: trend_season_peaks_wpk.season_peaks_wpk_180,
                          300: trend_season_peaks_wpk.season_peaks_wpk_300,
+                         360: trend_season_peaks_wpk.season_peaks_wpk_360,
                          480: trend_season_peaks_wpk.season_peaks_wpk_480,
                          600: trend_season_peaks_wpk.season_peaks_wpk_600,
+                         900: trend_season_peaks_wpk.season_peaks_wpk_900,
                          1200: trend_season_peaks_wpk.season_peaks_wpk_1200,
                          1800: trend_season_peaks_wpk.season_peaks_wpk_1800,
+                         2400: trend_season_peaks_wpk.season_peaks_wpk_2400,
                          3600: trend_season_peaks_wpk.season_peaks_wpk_3600,
                          5400: trend_season_peaks_wpk.season_peaks_wpk_5400
                          }
         return peak_duration.get(duration, "Invalid duration (wpk)")
     elif not compare and series == "power":
         peak_duration = {1: trend_season_peaks_power.season_peaks_power_1,
+                         3: trend_season_peaks_wpk.season_peaks_wpk_3,
                          5: trend_season_peaks_power.season_peaks_power_5,
                          10: trend_season_peaks_power.season_peaks_power_10,
                          15: trend_season_peaks_power.season_peaks_power_15,
@@ -196,10 +213,13 @@ def seasonPeaks(all=False, filter="", compare=False, series="wpk", duration=5): 
                          120: trend_season_peaks_power.season_peaks_power_120,
                          180: trend_season_peaks_power.season_peaks_power_180,
                          300: trend_season_peaks_power.season_peaks_power_300,
+                         360: trend_season_peaks_wpk.season_peaks_wpk_360,
                          480: trend_season_peaks_power.season_peaks_power_480,
                          600: trend_season_peaks_power.season_peaks_power_600,
+                         900: trend_season_peaks_wpk.season_peaks_wpk_900,
                          1200: trend_season_peaks_power.season_peaks_power_1200,
                          1800: trend_season_peaks_power.season_peaks_power_1800,
+                         2400: trend_season_peaks_wpk.season_peaks_wpk_2400,
                          3600: trend_season_peaks_power.season_peaks_power_3600,
                          5400: trend_season_peaks_power.season_peaks_power_5400
                          }

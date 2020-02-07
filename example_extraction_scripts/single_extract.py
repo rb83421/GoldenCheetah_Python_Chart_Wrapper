@@ -1,18 +1,25 @@
-import multiprocessing
 import threading
 from datetime import datetime
 import os
 
 start = datetime.now()
 store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
+athlete = GC.athlete()
+try:
+    athlete_body = GC.seasonMeasures(all=True, group="Body")
+    athlete_body = True
+except SystemError:
+    print("No body measurement found create empty file")
+    athlete_body = False
 activity = GC.activity()
+activity_list = GC.activities( filter='Data contains "P" and Data contains "H"')
 activity_intervals = GC.activityIntervals()
 activity_metrics = GC.activityMetrics()
 zone = GC.athleteZones(date=activity_metrics["date"], sport="bike")
 season_metrics = GC.seasonMetrics(all=True)
 pmc = GC.seasonPmc(all=True, metric="BikeStress")
 season_mean_max = GC.seasonMeanmax(all=True)
-durations = [1, 5, 10, 15, 20, 30, 60, 120, 180, 300, 480, 600, 1200, 1800, 3600, 5400]
+durations = [1, 3, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 480, 600, 900, 1200, 1800, 2400, 3600, 5400]
 peaks_power = []
 peaks_wpk = []
 for duration in durations:
@@ -24,6 +31,33 @@ print('Collect DATA: {}'.format(datetime.now() - start))
 
 
 # TODO Create popup what is exported where
+
+def write_athlete_data():
+    f = open(os.path.join(store_location, "athlete_data.py"), "w+")
+    f.writelines("import datetime\n")
+    f.writelines("athlete_data = " + str(athlete))
+    f.close()
+
+
+def write_athlete_body(athlete_body_measurement):
+    f = open(os.path.join(store_location, "athlete_body_data.py"), "w+")
+    f.writelines("import datetime\n")
+    if athlete_body_measurement:
+        f.writelines("athlete_body_data = { ")
+        for key in athlete_body.keys():
+            f.writelines("    '" + str(key) + "': " + str(athlete_body[key]) + ", \n")
+        f.writelines("\n }")
+    else:
+        f.writelines("athlete_body_data = None \n")
+    f.close()
+
+
+def write_activity_list():
+    f = open(os.path.join(store_location, "activity_list.py"), "w+")
+    f.writelines("import datetime\n")
+    f.writelines("activity_list = " + str(activity_list))
+    f.close()
+
 
 def write_activity_data():
     f = open(os.path.join(store_location, "activity_single_extract_data.py"), "w+")
@@ -134,6 +168,9 @@ def write_peaks_wpk():
 
 if __name__ == "__main__":
     p = [
+        threading.Thread(target=write_athlete_body, args=(athlete_body,)),
+        threading.Thread(target=write_athlete_data, args=()),
+        threading.Thread(target=write_activity_list, args=()),
         threading.Thread(target=write_activity_data, args=()),
         threading.Thread(target=write_activity_intervals, args=()),
         threading.Thread(target=write_activity_metrics, args=()),

@@ -73,7 +73,7 @@ def main():
         # when athlete weight incorrect fall back on athlete default weight
         if athlete_kg <= 0:
             athlete_kg = athlete['weight']
-    except SystemError:
+    except (SystemError, TypeError):
         # when an exception might be thrown when no body measures are used fall back on athlete default weight
         athlete_kg = athlete['weight']
     azz = GC.athleteZones(date=0, sport='bike')
