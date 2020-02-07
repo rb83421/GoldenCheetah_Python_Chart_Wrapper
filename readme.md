@@ -32,13 +32,15 @@ Select and activity you want to use it will generate the data to the configured 
 **Tip** also select and interval this is also used in some of the charts.
 
 ## 2 Extract compared trends information (season)
-For this you need to switch in GC to the Trends view select 2 or more 'Date range' (how can be found in [UG_Compare Pane_General](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Compare-Pane_General).
+For this you need to switch in GC to the Trends view select 2 or more 'Date range'.<br>
+How can be found in [UG_Compare Pane_General](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Compare-Pane_General).
 <img src=https://raw.githubusercontent.com/GoldenCheetah/GoldenCheetah/master/doc/wiki/ComparePane_DragDrop.gif>
-Now create an python chart in the trends view in GC and copy the trends_extract_with_compare content to the GC python chart.
+Create an python chart in the trends view in GC and copy the content of trends_extract_with_compare into it.
 
 **Tip** Don't forget to turn the compare on.
 
-After you have followed the two step you should be able to execute the charts
+
+After you have followed the two steps you should be able to execute the charts
 
 
 # Be creative :)
