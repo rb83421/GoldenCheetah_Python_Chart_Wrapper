@@ -11,6 +11,9 @@ V2 - 2020-02-02 - add ride time line + interval selection
 V3 - 2020-02-03 - add power data with am4chart (Todo when data contains gaps power list is not correct)
 
 """
+import matplotlib
+from matplotlib import cm
+
 from GC_Wrapper import GC_wrapper as GC
 
 from datetime import datetime, timedelta
@@ -240,7 +243,13 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
         else:
             index = bisect.bisect_left(coloring_df.breaks, slope)
             color = coloring_df.colors[index]
-            legend_text = coloring_df.legend_text[index]
+            # legend_text = coloring_df.legend_text[index]
+            legend_text = str(round(slope,2)) + "%"
+            # normalize item number values to colormap
+            # norm = matplotlib.colors.Normalize(vmin=-25, vmax=25)
+            # rgba_color = list(cm.jet(norm(slope), bytes=True))
+            # color = 'rgba(' + str(rgba_color[0]) + ', ' + str(rgba_color[1]) + ', ' + str(rgba_color[2]) + ', 0.6)'
+
 
         start_seconds = slice_df.seconds.iloc[0]
         stop_seconds = slice_df.seconds.iloc[-1]
