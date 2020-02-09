@@ -117,10 +117,7 @@ def write_all_season_metrics():
     f.writelines("import datetime \n")
     f.writelines("all_season_metrics = { \n")
     for key in season_metrics.keys():
-        if key != "Workout_Title":
-            f.writelines("    '" + str(key) + "': " + str(season_metrics[key]) + ", \n")
-        else:
-            f.writelines("    '" + str(key) + "': " + str([x.encode('utf-8') for x in season_metrics[key]]) + ", \n")
+        f.writelines("    '" + str(key) + "': " + str(season_metrics[key]) + ", \n")
 
     f.writelines("\n }")
     f.close()

@@ -17,6 +17,7 @@ from GC_DATA import trend_season_compare_peaks_wpk
 from GC_DATA import trend_compare_seasons
 from GC_DATA import trend_all_seasons
 from GC_DATA import trend_compare_seasons_metrics
+from GC_DATA import trend_extract_one_selected_season_metrics
 
 # Types from GoldenCheetah
 from GC_DATA import gc_series_enum as GC_E
@@ -169,8 +170,10 @@ def season(all=False, compare=False):  # to get season details
 
 
 def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
-    if not compare:
+    if not compare and all:
         return trend_single_extract_all_season_metrics.all_season_metrics
+    elif not compare and not all:
+        return trend_extract_one_selected_season_metrics.one_selected_season_metrics
     else:
         return trend_compare_seasons_metrics.compare_seasons_metrics
 

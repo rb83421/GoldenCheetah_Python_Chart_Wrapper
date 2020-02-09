@@ -7,6 +7,8 @@ store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
 
 selected_seasons = GC.season(compare=True)
 all_seasons = GC.season(all=True)
+one_selected_seasons_metrics = GC.seasonMetrics()
+
 compares_season_metrics = GC.seasonMetrics(compare=True)
 durations = [1, 3, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 480, 600, 900, 1200, 1800, 2400, 3600, 5400]
 compare_peaks_power = []
@@ -51,11 +53,7 @@ def write_compare_season_metrics():
             if isinstance(var, dict):
                 f.writelines("        {\n")
                 for key in var.keys():
-                    if key != "Workout_Title":
-                        f.writelines("            '" + str(key) + "': " + str(var[key]) + ", \n")
-                    else:
-                        f.writelines(
-                            "            '" + str(key) + "': " + str([x.encode('utf-8') for x in var[key]]) + ", \n")
+                    f.writelines("            '" + str(key) + "': " + str(var[key]) + ", \n")
                 f.writelines("        },\n")
             else:
                 f.writelines("        '" + str(var) + "',\n")
@@ -104,6 +102,17 @@ def write_compare_peaks_wpk():
     f.close()
 
 
+def write_one_selected_season_metrics():
+    f = open(os.path.join(store_location, "trend_extract_one_selected_season_metrics.py"), "w+")
+    f.writelines("import datetime \n")
+    f.writelines("one_selected_season_metrics = { \n")
+    for key in one_selected_seasons_metrics.keys():
+        f.writelines("    '" + str(key) + "': " + str(one_selected_seasons_metrics[key]) + ", \n")
+
+    f.writelines("\n }")
+    f.close()
+
+
 if __name__ == "__main__":
     p = [
         threading.Thread(target=write_selected_seasons, args=()),
@@ -111,6 +120,7 @@ if __name__ == "__main__":
         threading.Thread(target=write_compare_season_metrics, args=()),
         threading.Thread(target=write_compare_peaks_power, args=()),
         threading.Thread(target=write_compare_peaks_wpk, args=()),
+        threading.Thread(target=write_one_selected_season_metrics, args=()),
     ]
 
     start = datetime.now()
