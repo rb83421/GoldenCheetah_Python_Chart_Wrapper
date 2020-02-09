@@ -321,7 +321,7 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
     <div id="cesiumContainer" ></div>
     <div id="chartdiv"></div> 
-    <script type="text/javascript">
+    <script>
     ''' + provided_api_key + '''
     var nan = NaN;    
     var power = ''' + str(temp_df.power.tolist()) + ''';
