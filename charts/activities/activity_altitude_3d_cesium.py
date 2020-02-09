@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V3 (Py)
+Altitude 3d Cesium V4 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -8,7 +8,8 @@ Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-
 
 V1 - 2020-02-01 - Initial chart
 V2 - 2020-02-02 - add ride time line + interval selection
-V3 - 2020-02-03 - add power data with am4chart (Todo when data contains gaps power list is not correct)
+V3 - 2020-02-03 - add power data with am4chart
+V4 - 2020-02-09 - fix pause fill gaps with nan add speed gauge
 
 """
 import matplotlib
@@ -276,10 +277,10 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
 
-    temp_df = activity_df.filter(['seconds', 'power', 'heart.rate'])
+    temp_df = activity_df.filter(['seconds', 'power', 'heart.rate',  'speed'])
     new_index = pd.Index(np.arange(0, activity_df.seconds.tolist()[-1]), name="seconds")
     temp_df = temp_df.set_index("seconds").reindex(new_index).reset_index()
-
+    temp_df.speed = temp_df.speed.round(1)
     provided_api_key = ""
     if API_KEY:
         provided_api_key = "Cesium.Ion.defaultAccessToken = '" + API_KEY + "';"
@@ -295,6 +296,17 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
         color: ''' + gc_text_color + ''';
     }
     
+    #cesiumContainer {
+      height: 600px;
+      margin: 1em auto;
+    }
+
+    
+    #chartdiv {
+      height: 400px;
+      margin: 1em auto;
+    }
+        
     html{
           background-color:  ''' + str(gc_bg_color) + ''';
     }  
@@ -308,10 +320,12 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     <script src="https://www.amcharts.com/lib/4/maps.js"></script>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
     <div id="cesiumContainer" ></div>
-    <div id="chartdiv"></div>
-    
+    <div id="chartdiv"></div> 
     <script type="text/javascript">
-    ''' + provided_api_key + ''' 
+    ''' + provided_api_key + '''
+    var nan = NaN;    
+    var power = ''' + str(temp_df.power.tolist()) + ''';
+    var speed = ''' + str(temp_df.speed.tolist()) + ''';
     ''' + czml + '''
     var viewer = new Cesium.Viewer('cesiumContainer', {
         shouldAnimate : true
@@ -330,28 +344,129 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     
     // Create chart instance
     var chart = am4core.create(document.getElementById("chartdiv"), am4charts.GaugeChart);
+    
     var axis = chart.xAxes.push(new am4charts.ValueAxis());
     axis.min = 0;
     axis.max = ''' + str(max_watt) + ''';
     axis.strictMinMax = true;
+    axis.renderer.grid.template.disabled = true;
+    axis.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
+    axis.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
+
     
     chart.innerRadius = -15;
     
     ''' + str("".join(zone_blocks)) + '''
     
-    
     var hand = chart.hands.push(new am4charts.ClockHand());
+    hand.innerRadius = am4core.percent(85);
+    hand.startWidth = 5;
+    hand.pin.disabled = true;
     hand.value = 0;
-    hand.fill = am4core.color("#FFFFFF");
-    hand.stroke = am4core.color("#FFFFFF");
+    hand.fill = am4core.color("''' + gc_text_color + '''");
+    hand.stroke = am4core.color("''' + gc_text_color + '''");
+    
     
     var label = chart.radarContainer.createChild(am4core.Label);
     label.fontSize = 20;
+    label.innerRadius = 80;
+    label.y = -265;
+    label.textAlign = "middle";;
+    label.fill = am4core.color("''' + gc_text_color + '''");
     label.horizontalCenter = "middle";
-    label.text = "";
     
-    var nan = NaN;    
-    var power = ''' + str(temp_df.power.tolist()) + ''';
+    label.text = "";
+
+    
+    /**
+     * Normal axis
+     */
+
+    var axis_speed = chart.xAxes.push(new am4charts.ValueAxis);
+    axis_speed.min = 0;
+    axis_speed.max = 60;
+    axis_speed.renderer.minGridDistance = 100;
+    axis_speed.strictMinMax = true;
+    axis_speed.renderer.radius = am4core.percent(80);
+    axis_speed.renderer.inside = true;
+    axis_speed.renderer.line.strokeOpacity = 1;
+    axis_speed.renderer.line.stroke = am4core.color("''' + gc_text_color + '''");
+    axis_speed.renderer.ticks.template.disabled = false;  
+    axis_speed.renderer.ticks.template.strokeOpacity = 1;
+    axis_speed.renderer.ticks.template.length = 15;
+    axis_speed.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
+    axis_speed.renderer.grid.template.disabled = true;
+    axis_speed.renderer.labels.template.radius = 40;
+    axis_speed.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
+
+
+    var axis2_speed = chart.xAxes.push(new am4charts.ValueAxis);
+    axis2_speed.min = 0;
+    axis2_speed.max = 60;
+    axis2_speed.renderer.minGridDistance = 1;
+    axis2_speed.strictMinMax = true;
+    axis2_speed.renderer.radius = am4core.percent(80);
+    axis2_speed.renderer.inside = true;
+    axis2_speed.renderer.ticks.template.disabled = false;  
+    axis2_speed.renderer.ticks.template.strokeOpacity = 0.8;
+    axis2_speed.renderer.ticks.template.length = 5;
+    axis2_speed.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
+    axis2_speed.renderer.grid.template.disabled = true;
+    axis2_speed.renderer.labels.template.adapter.add("text", function(text) {
+    return "" ;
+    })
+
+    /**
+     * Axis for ranges
+     */
+
+    var colorSet = new am4core.ColorSet();
+
+    var axis3_speed = chart.xAxes.push(new am4charts.ValueAxis());
+    axis3_speed.min = 0;
+    axis3_speed.max = 60;
+    axis3_speed.renderer.innerRadius = 10
+    axis3_speed.strictMinMax = true;
+    axis3_speed.renderer.labels.template.disabled = true;
+    axis3_speed.renderer.ticks.template.disabled = true;
+    axis3_speed.renderer.grid.template.disabled = true;
+
+    var range0 = axis2_speed.axisRanges.create();
+    range0.value = 0;
+    range0.endValue = 60;
+    range0.axisFill.fillOpacity = 0.6;
+    range0.axisFill.fill = colorSet.getIndex(0);
+
+    /**
+     * Label
+     */
+
+    var label_speed = chart.radarContainer.createChild(am4core.Label);
+    label_speed.isMeasured = false;
+    label_speed.fontSize = 20;
+    label_speed.horizontalCenter = "middle";
+    label_speed.verticalCenter = "bottom";
+    label_speed.textAlign = "middle";;
+    label_speed.fill = am4core.color("''' + gc_text_color + '''");
+    label_speed.text = "";
+
+
+    /**
+     * Hand
+     */
+
+    var hand_speed = chart.hands.push(new am4charts.ClockHand());
+    hand_speed.axis = axis2_speed;
+    hand_speed.innerRadius = am4core.percent(30);
+    hand_speed.startWidth = 5;
+    hand_speed.pin.disabled = true;
+    hand_speed.value = 0;
+    hand_speed.fill = am4core.color("''' + gc_text_color + '''");
+    hand_speed.stroke = am4core.color("''' + gc_text_color + '''");
+
+
+
+
     var lastTime = viewer.clockViewModel.startTime;
     start_date = new Date("''' + str(start_time_str) + '''")
     Cesium.knockout.getObservable(viewer.clockViewModel, 'currentTime').subscribe(
@@ -359,12 +474,19 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
           var current_date = new Date(Cesium.JulianDate.toIso8601(currentTime, 0));
           var dif = current_date.getTime() - start_date.getTime();
           var seconds_from_dif = dif / 1000;
-          label.text = power[seconds_from_dif]         
+          label.text = power[seconds_from_dif] + " Watt"
+          label_speed.text = speed[seconds_from_dif] + " km/h"
           var animation = new am4core.Animation(hand, {
             property: "value",
             to: power[seconds_from_dif]
           }, 1000, am4core.ease.cubicOut).start();
+          var animation2 = new am4core.Animation(hand_speed, {
+            property: "value",
+            to: speed[seconds_from_dif]
+          }, 1000, am4core.ease.cubicOut).start();
     });
+
+
 
 </script>
 
@@ -372,8 +494,6 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
 </html>
 
     '''
-
-
 
 if __name__ == "__main__":
     main()
