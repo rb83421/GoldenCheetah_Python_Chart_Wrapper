@@ -1,6 +1,6 @@
 # TimeLine V1 (Py)
 # This is an python chart
-# <Description>
+# This chart plot for an season the activities in an timeline (test for upload)
 #
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
