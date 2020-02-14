@@ -343,7 +343,7 @@ def tiz_html(metrics, zone, type="L"):
     # type L = Power
     # type H = Heart rate
 
-    # if heart rate assume 5 zones unalbe to get hr zones via python or R
+    # if heart rate assume 5 zones unable to get hr zones via python or R
     if type == "H":
         nr_of_zones = np.arange(0, 5)
         zone_colors = ["rgb(255, 85, 255)",
