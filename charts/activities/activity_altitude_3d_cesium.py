@@ -10,10 +10,9 @@ V1 - 2020-02-01 - Initial chart
 V2 - 2020-02-02 - add ride time line + interval selection
 V3 - 2020-02-03 - add power data with am4chart
 V4 - 2020-02-09 - fix pause fill gaps with nan add speed gauge
+V5 - 2020-02-14 - add HR and toggle buttons
 
 """
-import matplotlib
-from matplotlib import cm
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -42,19 +41,20 @@ temp_duration_selection = None # 360
 
 API_KEY = None
 
+# HR percentage zone taken over from Options->Athlete->Zones-Heartrate Zones->Default
+hr_zone_pct = [0, 68, 83, 94, 105]
+zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
 
-def get_zone_blocks(zones, max_watt):
+
+def get_zone_ranges(zones, zones_colors, max_range, axis="axis_pwr"):
     zone_blocks = []
-    zones_low = zones['zoneslow'][0]
-    zones_colors = zones['zonescolor'][0]
-
-    for i in range(len(zones_low)):
-        zones_low.append(max_watt)
+    for i in range(len(zones)):
+        zones.append(max_range)
         zone_blocks.append(
             '''
-            var range''' + str(i) + ''' = axis.axisRanges.create();
-            range''' + str(i) + '''.value = ''' + str(zones_low[i]) + ''';
-            range''' + str(i) + '''.endValue = ''' + str(zones_low[i+1]) + ''';
+            var range''' + str(i) + ''' = ''' + axis + '''.axisRanges.create();
+            range''' + str(i) + '''.value = ''' + str(zones[i]) + ''';
+            range''' + str(i) + '''.endValue = ''' + str(zones[i+1]) + ''';
             range''' + str(i) + '''.axisFill.fillOpacity = 1;
             range''' + str(i) + '''.axisFill.fill = am4core.color("''' + str(zones_colors[i]) + '''");
             range''' + str(i) + '''.axisFill.zIndex = -1;
@@ -81,9 +81,16 @@ def main():
     entities = determine_altitude_entities(activity_df, coloring_mode, coloring_df, slice_distance)
     selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
     czml_block = get_czml_block_str(activity_df, activity_metric)
-    zone_blocks = get_zone_blocks(zones, max_watt)
+    power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
+    hr_lthr = zones['lthr'][0]
+    hr_max = zones['hrmax'][0]
 
-    html = write_html(activity_df, activity_metric, entities, selected_interval_entities, czml_block, zone_blocks, max_watt)
+    zones_hr = []
+    for i in hr_zone_pct:
+        zones_hr.append(round(hr_lthr/100*i))
+    hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
+
+    html = write_html(activity_df, activity_metric, entities, selected_interval_entities, czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
     temp_file.writelines(html)
     temp_file.close()
 
@@ -188,6 +195,7 @@ var czml = [{
     
     '''
 
+
 def determine_coloring_dict(color_mode, zones):
     coloring_dict = {'breaks': [],
                      'colors': [],
@@ -273,7 +281,7 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
     return e
 
 
-def write_html(activity_df, activity_metric, entities, selected_interval_entities, czml, zone_blocks, max_watt):
+def write_html(activity_df, activity_metric, entities, selected_interval_entities, czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
 
@@ -302,30 +310,50 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     }
 
     
-    #chartdiv {
+    #container {
       height: 400px;
       margin: 1em auto;
+      background-color:  #343434;      
     }
         
-    html{
-          background-color:  ''' + str(gc_bg_color) + ''';
-    }  
+    .black_back{
+        background-color:  #343434;
+    }
+
+    .toggle.ios, .toggle-on.ios, .toggle-off.ios { border-radius: 20px; }
+    .toggle.ios .toggle-handle { border-radius: 20px; }
     </style>
   <meta charset="utf-8">
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+  <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+  
 </head>
-<body>
+<body class="black_back">
+
     <script src="https://www.amcharts.com/lib/4/core.js"></script>
     <script src="https://www.amcharts.com/lib/4/charts.js"></script>
     <script src="https://www.amcharts.com/lib/4/maps.js"></script>
+
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+    
     <div id="cesiumContainer" ></div>
-    <div id="chartdiv"></div> 
+    <div class="black_back" align="center" >
+        <input type="checkbox" id="toggle-hr" checked data-on="HR" data-off="HR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
+        <input type="checkbox" id="toggle-pwr" checked data-on="PWR" data-off="PWR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
+        <input type="checkbox" id="toggle-speed" checked data-on="SPEED" data-off="SPEED" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
+    </div>
+    <div id="container"></div> 
     <script>
     ''' + provided_api_key + '''
     var nan = NaN;    
     var power = ''' + str(temp_df.power.tolist()) + ''';
     var speed = ''' + str(temp_df.speed.tolist()) + ''';
+    var hr = ''' + str(temp_df['heart.rate'].tolist()) + ''';
+    
     ''' + czml + '''
     var viewer = new Cesium.Viewer('cesiumContainer', {
         shouldAnimate : true
@@ -342,52 +370,71 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     viewer.zoomTo(viewer.entities);
     
     
-    // Create chart instance
-    var chart = am4core.create(document.getElementById("chartdiv"), am4charts.GaugeChart);
-    
-    var axis = chart.xAxes.push(new am4charts.ValueAxis());
-    axis.min = 0;
-    axis.max = ''' + str(max_watt) + ''';
-    axis.strictMinMax = true;
-    axis.renderer.grid.template.disabled = true;
-    axis.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
-    axis.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
 
-    
+    // Create a container
+    var container = am4core.create(document.getElementById("container"), am4core.Container);
+    container.width = am4core.percent(100);
+    container.height = am4core.percent(100);
+    container.layout = "horizontal";
+
+    // Create sub-containers
+    // var buttonContainer = container.createChild(am4core.Container);
+    // buttonContainer.layout = "vertical";
+    // buttonContainer.width = 200;
+    // buttonContainer.height = am4core.percent(100);
+    // buttonContainer.background.fill = am4core.color("#D2AB99");
+    // buttonContainer.background.fillOpacity = 0.3;
+
+    var chartContainer = container.createChild(am4core.Container);
+    chartContainer.layout = "vertical";
+    chartContainer.width = am4core.percent(100);
+    chartContainer.height = am4core.percent(100);
+
+
+
+
+    // Create chart instance
+    var chart = chartContainer.createChild(am4charts.GaugeChart);
     chart.innerRadius = -15;
     
-    ''' + str("".join(zone_blocks)) + '''
-    
-    var hand = chart.hands.push(new am4charts.ClockHand());
-    hand.innerRadius = am4core.percent(85);
-    hand.startWidth = 5;
-    hand.pin.disabled = true;
-    hand.value = 0;
-    hand.fill = am4core.color("''' + gc_text_color + '''");
-    hand.stroke = am4core.color("''' + gc_text_color + '''");
-    
-    
-    var label = chart.radarContainer.createChild(am4core.Label);
-    label.fontSize = 20;
-    label.innerRadius = 80;
-    label.y = -265;
-    label.textAlign = "middle";;
-    label.fill = am4core.color("''' + gc_text_color + '''");
-    label.horizontalCenter = "middle";
-    
-    label.text = "";
+    var axis_pwr = chart.xAxes.push(new am4charts.ValueAxis());
+    axis_pwr.min = 0;
+    axis_pwr.max = ''' + str(max_watt) + ''';
+    axis_pwr.strictMinMax = true;
+    axis_pwr.renderer.grid.template.disabled = true;
+    axis_pwr.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
+    axis_pwr.renderer.labels.template.radius = am4core.percent(1);    
+    axis_pwr.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
 
     
-    /**
-     * Normal axis
-     */
+    
+    ''' + str("".join(power_zone_ranges)) + '''
+    
+    var hand_pwr = chart.hands.push(new am4charts.ClockHand());
+    hand_pwr.innerRadius = am4core.percent(85);
+    hand_pwr.startWidth = 5;
+    hand_pwr.pin.disabled = true;
+    hand_pwr.value = 0;
+    hand_pwr.fill = am4core.color("''' + gc_text_color + '''");
+    hand_pwr.stroke = am4core.color("''' + gc_text_color + '''");
+    
+    
+    var label_pwr = chart.radarContainer.createChild(am4core.Label);
+    label_pwr.fontSize = 20;
+    label_pwr.innerRadius = 80;
+    label_pwr.y = -265;
+    label_pwr.textAlign = "middle";;
+    label_pwr.fill = am4core.color("''' + gc_text_color + '''");
+    label_pwr.horizontalCenter = "middle";
+    label_pwr.text = "";
 
+    
     var axis_speed = chart.xAxes.push(new am4charts.ValueAxis);
     axis_speed.min = 0;
     axis_speed.max = 60;
     axis_speed.renderer.minGridDistance = 100;
     axis_speed.strictMinMax = true;
-    axis_speed.renderer.radius = am4core.percent(80);
+    axis_speed.renderer.radius = am4core.percent(50);
     axis_speed.renderer.inside = true;
     axis_speed.renderer.line.strokeOpacity = 1;
     axis_speed.renderer.line.stroke = am4core.color("''' + gc_text_color + '''");
@@ -405,7 +452,7 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     axis2_speed.max = 60;
     axis2_speed.renderer.minGridDistance = 1;
     axis2_speed.strictMinMax = true;
-    axis2_speed.renderer.radius = am4core.percent(80);
+    axis2_speed.renderer.radius = am4core.percent(50);
     axis2_speed.renderer.inside = true;
     axis2_speed.renderer.ticks.template.disabled = false;  
     axis2_speed.renderer.ticks.template.strokeOpacity = 0.8;
@@ -419,7 +466,6 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     /**
      * Axis for ranges
      */
-
     var colorSet = new am4core.ColorSet();
 
     var axis3_speed = chart.xAxes.push(new am4charts.ValueAxis());
@@ -454,15 +500,112 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     /**
      * Hand
      */
-
     var hand_speed = chart.hands.push(new am4charts.ClockHand());
     hand_speed.axis = axis2_speed;
-    hand_speed.innerRadius = am4core.percent(30);
+    hand_speed.innerRadius = am4core.percent(40);
     hand_speed.startWidth = 5;
     hand_speed.pin.disabled = true;
     hand_speed.value = 0;
     hand_speed.fill = am4core.color("''' + gc_text_color + '''");
-    hand_speed.stroke = am4core.color("''' + gc_text_color + '''");
+    hand_speed.stroke = am4core.color("''' + gc_text_color + '''");    
+
+
+
+
+    var axis_hr = chart.xAxes.push(new am4charts.ValueAxis());
+    axis_hr.min = 40;
+    axis_hr.max = ''' + str(max_hr) + ''';
+    axis_hr.renderer.radius = am4core.percent(70);
+    axis_hr.strictMinMax = true;
+    axis_hr.renderer.grid.template.disabled = true;
+    axis_hr.renderer.labels.template.fill = am4core.color("#ffffff");
+    axis_hr.renderer.labels.template.radius = am4core.percent(1);    
+    axis_hr.renderer.ticks.template.stroke = am4core.color("#ffffff");
+    
+    
+    ''' + str("".join(heartrate_zone_ranges)) + '''
+    
+    var hand_hr = chart.hands.push(new am4charts.ClockHand());
+    hand_hr.axis = axis_hr;
+    hand_hr.innerRadius = am4core.percent(80);
+    hand_hr.startWidth = 5;
+    hand_hr.pin.disabled = true;
+    hand_hr.value = 50;
+    hand_hr.fill = am4core.color("#ffffff");
+    hand_hr.stroke = am4core.color("#ffffff");
+    
+    
+    var label_hr = chart.radarContainer.createChild(am4core.Label);
+    label_hr.fontSize = 20;
+    label_hr.innerRadius = 40;
+    label_hr.y = -185;
+    label_hr.textAlign = "middle";;
+    label_hr.fill = am4core.color("#ffffff");
+    label_hr.horizontalCenter = "middle";
+    label_hr.text = "";
+
+
+
+    $(function() {
+        $('#toggle-hr').change(function() {
+            if(label_hr.visible==false){
+            label_hr.visible=true;
+            hand_hr.visible=true;
+            axis_hr.visible=true;
+
+            axis3_speed.renderer.innerRadius = 10
+            axis2_speed.renderer.radius = am4core.percent(50);
+            axis_speed.renderer.radius = am4core.percent(50);
+            hand_speed.innerRadius = am4core.percent(40);
+           
+        }else{
+            label_hr.visible=false;
+            hand_hr.visible=false;
+            axis_hr.visible=false;
+
+            axis3_speed.renderer.innerRadius = 40
+            axis2_speed.renderer.radius = am4core.percent(80);
+            axis_speed.renderer.radius = am4core.percent(80);
+            hand_speed.innerRadius = am4core.percent(25);
+
+        }
+    })
+    })
+
+
+  $(function() {
+        $('#toggle-pwr').change(function() {
+            if(label_pwr.visible==false){
+                label_pwr.visible=true;
+                hand_pwr.visible=true;
+                axis_pwr.visible=true;
+            }else{
+                label_pwr.visible=false;
+                hand_pwr.visible=false;
+                axis_pwr.visible=false;
+            }
+    })
+  })  
+
+
+  $(function() {
+        $('#toggle-speed').change(function() {
+            if(label_speed.visible==false){
+                label_speed.visible=true;
+                hand_speed.visible=true;
+                axis_speed.visible=true;
+                axis2_speed.visible=true;
+                axis3_speed.visible=true;
+            }else{
+                label_speed.visible=false;
+                hand_speed.visible=false;
+                axis_speed.visible=false;
+                axis2_speed.visible=false;
+                axis3_speed.visible=false;
+            }
+    })
+  })    
+
 
 
 
@@ -474,13 +617,18 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
           var current_date = new Date(Cesium.JulianDate.toIso8601(currentTime, 0));
           var dif = current_date.getTime() - start_date.getTime();
           var seconds_from_dif = dif / 1000;
-          label.text = power[seconds_from_dif] + " Watt"
+          label_pwr.text = power[seconds_from_dif] + " Watt"
+          label_hr.text = hr[seconds_from_dif] + " bmp"         
           label_speed.text = speed[seconds_from_dif] + " km/h"
-          var animation = new am4core.Animation(hand, {
+          var animation = new am4core.Animation(hand_pwr, {
             property: "value",
             to: power[seconds_from_dif]
           }, 1000, am4core.ease.cubicOut).start();
-          var animation2 = new am4core.Animation(hand_speed, {
+          var animation2 = new am4core.Animation(hand_hr, {
+            property: "value",
+            to: hr[seconds_from_dif]
+          }, 1000, am4core.ease.cubicOut).start();
+          var animation3 = new am4core.Animation(hand_speed, {
             property: "value",
             to: speed[seconds_from_dif]
           }, 1000, am4core.ease.cubicOut).start();
@@ -492,8 +640,8 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
 
 </body>
 </html>
+'''
 
-    '''
 
 if __name__ == "__main__":
     main()
