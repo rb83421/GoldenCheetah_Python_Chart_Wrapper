@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V4 (Py)
+Altitude 3d Cesium V6 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -11,6 +11,7 @@ V2 - 2020-02-02 - add ride time line + interval selection
 V3 - 2020-02-03 - add power data with am4chart
 V4 - 2020-02-09 - fix pause fill gaps with nan add speed gauge
 V5 - 2020-02-14 - add HR and toggle buttons
+V6 - 2020-02-15 - add altitude toggle + add interval selection
 
 """
 
@@ -46,6 +47,83 @@ hr_zone_pct = [0, 68, 83, 94, 105]
 zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
 
 
+def main():
+    activity = GC.activity()
+    activity_intervals = GC.activityIntervals()
+    activity_metric = GC.activityMetrics()
+    zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    activity_df = pd.DataFrame(activity, index=activity['seconds'])
+    season_peaks = GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=1)
+    max_watt = max(season_peaks['peak_power_1'])
+    # For testing purpose select only x number of seconds
+    if temp_duration_selection:
+        activity_df = activity_df.head(temp_duration_selection)
+    min_altitude = activity_df.altitude.min()
+    activity_df.altitude = activity_df.altitude - min_altitude + 0.0001  # small offset need for cesium rendering
+
+    interval_entities = get_interval_entities(activity_df, activity_intervals, zones)
+
+    altitude_entities = determine_altitude_entities(activity_df, zones, slice_distance)
+    selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
+    czml_block = get_czml_block_str(activity_df, activity_metric)
+    power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
+
+    hr_lthr = zones['lthr'][0]
+    hr_max = zones['hrmax'][0]
+    zones_hr = []
+    for i in hr_zone_pct:
+        zones_hr.append(round(hr_lthr/100*i))
+    hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
+
+    html = write_html(activity_df, activity_metric, activity_intervals, altitude_entities, interval_entities, czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
+    temp_file.writelines(html)
+    temp_file.close()
+
+    GC.webpage(pathlib.Path(temp_file.name).as_uri())
+
+
+def get_interval_entities(activity_df, activity_intervals, zones):
+    activity_intervals_df = pd.DataFrame(activity_intervals)
+    coloring_df = determine_coloring_dict("P", zones)
+    e = []
+    for interval_type in activity_intervals_df.type.drop_duplicates().tolist():
+        data_source_name = str(interval_type.replace(" ", "_")) + "DataSource"
+        e.append("var " + data_source_name + " = new Cesium.CustomDataSource(\"" + data_source_name + "\");\n")
+
+        selected_intervals = activity_intervals_df[activity_intervals_df.type == interval_type]
+        e1 = []
+        for index, row in selected_intervals.iterrows():
+            index_color = bisect.bisect_right(coloring_df.breaks, row['Average_Power'])
+            color = coloring_df.colors[index_color - 1]
+            print("Processing interval '" + str(interval_type) + "'(" + str(index) + "):" + str(row['name']))
+            filtered_df = activity_df[(activity_df.seconds >= row['start']) & (activity_df.seconds <= row['stop'])]
+            lat_long_str = str((filtered_df.longitude.map(str) + "," + filtered_df.latitude.map(str)).tolist()).replace("'", "")
+            e1.append(data_source_name + '''.entities.add(
+                {
+                    name : ' ''' + row['name'].replace("'", "\\'") + '''  ',
+                    wall : {
+                        positions : Cesium.Cartesian3.fromDegreesArray(
+                            ''' + lat_long_str + '''                                                        
+                        ),
+                        maximumHeights : 
+                            ''' + str(np.full(len(filtered_df.seconds.tolist()), row['Average_Power']).tolist()) + ''',
+                        minimumHeights : 
+                            ''' + str(np.zeros(len(filtered_df.seconds.tolist())).tolist()) + ''',
+                        material : Cesium.Color.fromCssColorString("''' + str(color) + '''"),       
+                        outline : false,
+                        outlineColor : Cesium.Color.fromCssColorString("''' + str(color) + '''"),
+                        zIndex: 1,
+                    }       
+                }
+            );
+            ''')
+
+        e.append(str("".join(e1)))
+        e.append("viewer.dataSources.add(" + data_source_name + ");\n")
+        e.append(data_source_name + ".show = false;\n")
+    return e
+
+
 def get_zone_ranges(zones, zones_colors, max_range, axis="axis_pwr"):
     zone_blocks = []
     for i in range(len(zones)):
@@ -61,62 +139,6 @@ def get_zone_ranges(zones, zones_colors, max_range, axis="axis_pwr"):
             '''
         )
     return zone_blocks
-
-
-def main():
-    activity = GC.activity()
-    activity_intervals = GC.activityIntervals()
-    activity_metric = GC.activityMetrics()
-    zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
-    activity_df = pd.DataFrame(activity, index=activity['seconds'])
-    season_peaks = GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=1)
-    max_watt = max(season_peaks['peak_power_1'])
-    # For testing purpose select only x number of seconds
-    if temp_duration_selection:
-        activity_df = activity_df.head(temp_duration_selection)
-    min_altitude = activity_df.altitude.min()
-    activity_df.altitude = activity_df.altitude - min_altitude + 0.0001  # small offset need for cesium rendering
-
-    coloring_df = determine_coloring_dict(coloring_mode, zones)
-    entities = determine_altitude_entities(activity_df, coloring_mode, coloring_df, slice_distance)
-    selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
-    czml_block = get_czml_block_str(activity_df, activity_metric)
-    power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
-    hr_lthr = zones['lthr'][0]
-    hr_max = zones['hrmax'][0]
-
-    zones_hr = []
-    for i in hr_zone_pct:
-        zones_hr.append(round(hr_lthr/100*i))
-    hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
-
-    html = write_html(activity_df, activity_metric, entities, selected_interval_entities, czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
-    temp_file.writelines(html)
-    temp_file.close()
-
-    GC.webpage(pathlib.Path(temp_file.name).as_uri())
-
-
-def get_entity_block_str(paths, color_str, zone_name):
-    lat_long_str = str((paths["lon"].map(str) + "," + paths["lat"].map(str)).tolist()).replace("'", "")
-    return '''
-viewer.entities.add({
-    name : ' ''' + zone_name + '''  ',
-    wall : {
-        positions : Cesium.Cartesian3.fromDegreesArray(
-            ''' + lat_long_str + '''                                                        
-        ),
-        maximumHeights : 
-            ''' + str(paths.maximumHeights.tolist()) + ''',
-        minimumHeights : 
-            ''' + str(np.zeros(len(paths.lat.tolist())).tolist()) + ''',
-        material : Cesium.Color.fromCssColorString("''' + color_str + '''"),       
-        outline : true,
-        outlineColor : Cesium.Color.fromCssColorString("''' + color_str + '''"),
-        zIndex: 1,       
-    }
-});
-    '''
 
 
 def get_selected_interval_entities(activity_df, activity_intervals):
@@ -220,10 +242,14 @@ def determine_coloring_dict(color_mode, zones):
     return coloring_df
 
 
-def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_value):
+def determine_altitude_entities(activity_df, zones, slice_value):
+    coloring_df = determine_coloring_dict(coloring_mode, zones)
+
     # Slice per x km
     number_slices = activity_df.distance.iloc[-1] / slice_value
     e = []
+    altitude_entity_name = "altitudeDataSource"
+    e.append("var " + altitude_entity_name + " = new Cesium.CustomDataSource(\"" + altitude_entity_name + "\");\n")
     for i in range(int(number_slices)):
         start = i * slice_value
         # last slice take last sample
@@ -245,7 +271,7 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
         # print("slope  : " + str(slope) + "(alt.: " + str(altitude_gain) + ", dist.: " + str(distance) + ")")
         avg_power = slice_df.power.mean()
 
-        if color_mode == "P":
+        if coloring_mode == "P":
             index = bisect.bisect_right(coloring_df.breaks, avg_power)
             color = coloring_df.colors[index - 1]
             legend_text = coloring_df.legend_text[index-1]
@@ -258,7 +284,6 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
             # norm = matplotlib.colors.Normalize(vmin=-25, vmax=25)
             # rgba_color = list(cm.jet(norm(slope), bytes=True))
             # color = 'rgba(' + str(rgba_color[0]) + ', ' + str(rgba_color[1]) + ', ' + str(rgba_color[2]) + ', 0.6)'
-
 
         start_seconds = slice_df.seconds.iloc[0]
         stop_seconds = slice_df.seconds.iloc[-1]
@@ -277,11 +302,33 @@ def determine_altitude_entities(activity_df, color_mode, coloring_df, slice_valu
                       'color': [color, color],
                       'slope': [slope, slope],
                       'average_power': [avg_power, avg_power]})
-        e.append(get_entity_block_str(df, color, legend_text))
+
+        lat_long_str = str((df["lon"].map(str) + "," + df["lat"].map(str)).tolist()).replace("'", "")
+        e.append(altitude_entity_name + '''.entities.add(
+            {
+                name : ' ''' + legend_text + '''  ',
+                wall : {
+                    positions : Cesium.Cartesian3.fromDegreesArray(
+                        ''' + lat_long_str + '''                                                        
+                    ),
+                    maximumHeights : 
+                        ''' + str(df.maximumHeights.tolist()) + ''',
+                    minimumHeights : 
+                        ''' + str(np.zeros(len(df.lat.tolist())).tolist()) + ''',
+                    material : Cesium.Color.fromCssColorString("''' + color + '''"),       
+                    outline : true,
+                    outlineColor : Cesium.Color.fromCssColorString("''' + color + '''"),
+                    zIndex: 1,       
+                }
+            }
+        );
+            ''')
+
+    e.append("viewer.dataSources.add(" + altitude_entity_name + ");\n")
     return e
 
 
-def write_html(activity_df, activity_metric, entities, selected_interval_entities, czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
+def write_html(activity_df, activity_metric, activity_intervals,  altitude_entities, interval_entities, czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
 
@@ -292,6 +339,20 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     provided_api_key = ""
     if API_KEY:
         provided_api_key = "Cesium.Ion.defaultAccessToken = '" + API_KEY + "';"
+
+    activity_intervals_df = pd.DataFrame(activity_intervals)
+    interval_list = [str("<a class=\"dropdown-item\" href=\"#\">" + interval_type + "</a>") for interval_type in activity_intervals_df.type.drop_duplicates().tolist()]
+
+    hide_interval = [str(interval_type.replace(" ", "_") + "DataSource.show = false;\n") for interval_type in activity_intervals_df.type.drop_duplicates().tolist()]
+    enable_interval = []
+    for interval_type in activity_intervals_df.type.drop_duplicates().tolist():
+        enable_interval.append(
+            '''
+            if ($('.selected_interval').text() == "''' + interval_type + '''"){
+            ''' + interval_type.replace(" ", "_") + '''DataSource.show = true;
+            } '''
+        )
+
 
     return '''
 <!DOCTYPE html>
@@ -337,15 +398,28 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
 
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Cesium.js"></script>
 
+
     <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>    
     <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
     
     <div id="cesiumContainer" ></div>
-    <div class="black_back" align="center" >
+    <div class="dropdown" align="center" >
+        <input type="checkbox" id="toggle-altitude" checked data-on="ALTITUDE" data-off="ALTITUDE" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
+        <input type="checkbox" id="toggle-interval" checked data-on="INTERVAL" data-off="INTERVAL" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
         <input type="checkbox" id="toggle-hr" checked data-on="HR" data-off="HR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
         <input type="checkbox" id="toggle-pwr" checked data-on="PWR" data-off="PWR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
-        <input type="checkbox" id="toggle-speed" checked data-on="SPEED" data-off="SPEED" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
+        <input type="checkbox" id="toggle-speed" checked data-on="SPEED" data-off="SPEED" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >        
     </div>
+    <div class="dropdown" align="center" style="padding-top: 10px;">
+      <button class="btn btn-secondary dropdown-toggle selected_interval" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 20px;">
+        Select Interval Type
+      </button>
+      <div class="dropdown-menu dropdown-selected_interval" aria-labelledby="dropdownMenuButton">
+        ''' + str("".join(interval_list)) + '''
+      </div>
+    </div>    
     <div id="container"></div> 
     <script>
     ''' + provided_api_key + '''
@@ -358,16 +432,17 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
     var viewer = new Cesium.Viewer('cesiumContainer', {
         shouldAnimate : true
     });
-    ''' + str("".join(entities)) + '''
+    ''' + str("".join(altitude_entities)) + '''
     
-    ''' + str("".join(selected_interval_entities)) + '''
+    ''' + str("".join(interval_entities)) + '''
     
     
     viewer.dataSources.add(Cesium.CzmlDataSource.load(czml)).then(function(ds) {
         viewer.trackedEntity = ds.entities.getById('path');
     });
     
-    viewer.zoomTo(viewer.entities);
+    viewer.flyTo(altitudeDataSource);
+
     
     
 
@@ -608,6 +683,36 @@ def write_html(activity_df, activity_metric, entities, selected_interval_entitie
 
 
 
+  $(function() {
+        $('#toggle-altitude').change(function() {
+            if(altitudeDataSource.show == false){
+                altitudeDataSource.show = true;
+            }else{
+                altitudeDataSource.show = false;
+            }
+    })
+  })    
+
+
+    $('.dropdown-selected_interval a').click(function(e){
+        $('.selected_interval').text(this.innerHTML);
+        ''' + str("".join(hide_interval)) + '''
+        ''' + str("".join(enable_interval)) + '''
+    });
+
+
+  $(function() {
+        $('#toggle-interval').change(function() {
+            ''' + str("".join(hide_interval)) + '''
+            if ($('#toggle-interval:checked').val() == "on"){
+                $('.selected_interval').prop('disabled', false);
+                ''' + str("".join(enable_interval)) + '''            
+            }else{
+                $('.selected_interval').prop('disabled', true);
+            }
+
+    })
+  })    
 
 
     var lastTime = viewer.clockViewModel.startTime;
