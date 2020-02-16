@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V6 (Py)
+Altitude 3d Cesium V7 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -12,6 +12,7 @@ V3 - 2020-02-03 - add power data with am4chart
 V4 - 2020-02-09 - fix pause fill gaps with nan add speed gauge
 V5 - 2020-02-14 - add HR and toggle buttons
 V6 - 2020-02-15 - add altitude toggle + add interval selection
+V7 - 2020-02-16 - make more robust for missing data + update selection layout
 
 """
 
@@ -46,9 +47,9 @@ API_KEY = None
 hr_zone_pct = [0, 68, 83, 94, 105]
 zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
 
-
 def main():
     activity = GC.activity()
+    #temp
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
     zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
@@ -61,23 +62,32 @@ def main():
     min_altitude = activity_df.altitude.min()
     activity_df.altitude = activity_df.altitude - min_altitude + 0.0001  # small offset need for cesium rendering
 
-    interval_entities = get_interval_entities(activity_df, activity_intervals, zones)
+    # Stop if no gps data is found in the activity
+    if "latitude" in activity:
+        interval_entities = get_interval_entities(activity_df, activity_intervals, zones)
+        altitude_entities = determine_altitude_entities(activity_df, zones, slice_distance)
 
-    altitude_entities = determine_altitude_entities(activity_df, zones, slice_distance)
-    selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
-    czml_block = get_czml_block_str(activity_df, activity_metric)
-    power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
+        selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
+        czml_block = get_czml_block_str(activity_df, activity_metric)
+        if "power" in activity:
+            power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
+        else:
+            power_zone_ranges = ""
 
-    hr_lthr = zones['lthr'][0]
-    hr_max = zones['hrmax'][0]
-    zones_hr = []
-    for i in hr_zone_pct:
-        zones_hr.append(round(hr_lthr/100*i))
-    hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
+        hr_lthr = zones['lthr'][0]
+        hr_max = zones['hrmax'][0]
+        zones_hr = []
+        for i in hr_zone_pct:
+            zones_hr.append(round(hr_lthr/100*i))
+        if "heart.rate" in activity:
+            hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
+        else:
+            hr_zone_ranges = ""
 
-    html = write_html(activity_df, activity_metric, activity_intervals, altitude_entities, interval_entities, czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
-    temp_file.writelines(html)
-    temp_file.close()
+        html = write_html(activity_df, activity_metric, activity_intervals, altitude_entities, interval_entities, selected_interval_entities,  czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
+    else:
+        write_no_valid_data_html()
+
 
     GC.webpage(pathlib.Path(temp_file.name).as_uri())
 
@@ -142,36 +152,44 @@ def get_zone_ranges(zones, zones_colors, max_range, axis="axis_pwr"):
 
 
 def get_selected_interval_entities(activity_df, activity_intervals):
-    entities = []
     lap = list(activity_intervals["selected"])
+    positions = []
+    selected_interval_names = []
     for index in list(compress(range(len(lap)), lap)):
+        selected_interval_names.append(activity_intervals["name"][index])
         selected_interval_start = int(activity_intervals["start"][index]) + 1
         selected_interval_stop = int(activity_intervals["stop"][index]) + 1
         selected_interval_df = activity_df.loc[selected_interval_start:selected_interval_stop].copy()
         positions = str((selected_interval_df.longitude.map(str) + ", " + selected_interval_df.latitude.map(str) + ", " + selected_interval_df.altitude.map(str)).tolist()).replace("'", "")
 
-        e = '''
-    viewer.entities.add({
-        name : 'Selected Interval',
-        polyline : {
-            positions : Cesium.Cartesian3.fromDegreesArrayHeights(
-            ''' + positions + '''
-            ),
-            width : 5,
-            material : Cesium.Color.BLUE,
-            zIndex: 2,
-        }
-    });    
-         '''
-        entities.append(e)
-    return entities
+    if not pd.DataFrame(activity_intervals).selected.any():
+        return ""
+    else:
+        return '''
+        var selectedIntervalsDataSource = new Cesium.CustomDataSource(\"selectedIntervalsDataSource\");    
+        selectedIntervalsDataSource.entities.add(
+                    {
+                        name : ' ''' + str("".join(selected_interval_names)) + '''  ',
+                        polyline : {
+                            positions : Cesium.Cartesian3.fromDegreesArrayHeights(
+                                ''' + str("".join(positions)) + '''                                                        
+                            ),
+                        width : 5,
+                        material : Cesium.Color.BLUE,
+                        }       
+                    }
+                );
+        viewer.dataSources.add(selectedIntervalsDataSource);
+        selectedIntervalsDataSource.show = true;                        
+        '''
 
 
 def get_czml_block_str(activity, activity_metric):
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
     end_time_str = (act_datetime + timedelta(seconds=activity_metric['Duration'])).isoformat() + "Z"
-    positions = str((activity.seconds.map(str) + ", " + activity.longitude.map(str) + ", " + activity.latitude.map(str) + ", " + activity.altitude.map(str)).tolist()).replace("'", "")
+    positions_w_time = str((activity.seconds.map(str) + ", " + activity.longitude.map(str) + ", " + activity.latitude.map(str) + ", " + activity.altitude.map(str)).tolist()).replace("'", "")
+    positions = str((activity.longitude.map(str) + ", " + activity.latitude.map(str) + ", " + activity.altitude.map(str)).tolist()).replace("'", "")
     return '''
 var czml = [{
     "id" : "document",
@@ -211,9 +229,26 @@ var czml = [{
     "position" : {
         "epoch" : "''' + start_time_str + '''",
         "cartographicDegrees" :
-        ''' + positions + '''
+        ''' + positions_w_time + '''
     }
 }];
+
+        var completeRideDataSource = new Cesium.CustomDataSource(\"completeRideDataSource\");    
+        completeRideDataSource.entities.add(
+                    {
+                        name : 'Entire ride',
+                        polyline : {
+                            positions : Cesium.Cartesian3.fromDegreesArrayHeights(
+                                ''' + str("".join(positions)) + '''                                                        
+                            ),
+                        width : 2,
+                        material : Cesium.Color.YELLOW,
+                        }       
+                    }
+                );
+        viewer.dataSources.add(completeRideDataSource);
+        completeRideDataSource.show = false;                        
+
     
     '''
 
@@ -269,9 +304,9 @@ def determine_altitude_entities(activity_df, zones, slice_value):
         # distance - X-Axis is in KM, Y-Axis in m! and at the end *100 to get %value
         slope = 100 * (altitude_gain / (distance * 1000))
         # print("slope  : " + str(slope) + "(alt.: " + str(altitude_gain) + ", dist.: " + str(distance) + ")")
-        avg_power = slice_df.power.mean()
 
         if coloring_mode == "P":
+            avg_power = slice_df.power.mean()
             index = bisect.bisect_right(coloring_df.breaks, avg_power)
             color = coloring_df.colors[index - 1]
             legend_text = coloring_df.legend_text[index-1]
@@ -300,8 +335,9 @@ def determine_altitude_entities(activity_df, zones, slice_value):
                       'lon': [start_lon, stop_lon],
                       'maximumHeights': [start_altitude, stop_altitude],
                       'color': [color, color],
-                      'slope': [slope, slope],
-                      'average_power': [avg_power, avg_power]})
+                      # 'slope': [slope, slope],
+                      # 'average_power': [avg_power, avg_power]
+                    })
 
         lat_long_str = str((df["lon"].map(str) + "," + df["lat"].map(str)).tolist()).replace("'", "")
         e.append(altitude_entity_name + '''.entities.add(
@@ -328,11 +364,102 @@ def determine_altitude_entities(activity_df, zones, slice_value):
     return e
 
 
-def write_html(activity_df, activity_metric, activity_intervals,  altitude_entities, interval_entities, czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
+def get_power_gauge(power_zone_ranges, max_watt):
+    return '''
+        var axis_pwr = chart.xAxes.push(new am4charts.ValueAxis());
+        axis_pwr.min = 0;
+        axis_pwr.max = ''' + str(max_watt) + ''';
+        axis_pwr.strictMinMax = true;
+        axis_pwr.renderer.grid.template.disabled = true;
+        axis_pwr.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
+        axis_pwr.renderer.labels.template.radius = am4core.percent(1);    
+        axis_pwr.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
+    
+        
+        
+        ''' + str("".join(power_zone_ranges)) + '''
+        
+        var hand_pwr = chart.hands.push(new am4charts.ClockHand());
+        hand_pwr.innerRadius = am4core.percent(85);
+        hand_pwr.startWidth = 5;
+        hand_pwr.pin.disabled = true;
+        hand_pwr.value = 0;
+        hand_pwr.fill = am4core.color("''' + gc_text_color + '''");
+        hand_pwr.stroke = am4core.color("''' + gc_text_color + '''");
+        
+        
+        var label_pwr = chart.radarContainer.createChild(am4core.Label);
+        label_pwr.fontSize = 20;
+        label_pwr.innerRadius = 80;
+        label_pwr.y = -265;
+        label_pwr.textAlign = "middle";;
+        label_pwr.fill = am4core.color("''' + gc_text_color + '''");
+        label_pwr.horizontalCenter = "middle";
+        label_pwr.text = "";
+    '''
+
+
+def get_power_gauge_animation():
+    return ''' 
+      label_pwr.text = power[seconds_from_dif] + " Watt"
+      var animation = new am4core.Animation(hand_pwr, {
+        property: "value",
+        to: power[seconds_from_dif]
+      }, 1000, am4core.ease.cubicOut).start();
+    '''
+
+
+def get_heartrate_gauge(heartrate_zone_ranges, max_hr):
+    return '''
+        var axis_hr = chart.xAxes.push(new am4charts.ValueAxis());
+    axis_hr.min = 40;
+    axis_hr.max = ''' + str(max_hr) + ''';
+    axis_hr.renderer.radius = am4core.percent(70);
+    axis_hr.strictMinMax = true;
+    axis_hr.renderer.grid.template.disabled = true;
+    axis_hr.renderer.labels.template.fill = am4core.color("#ffffff");
+    axis_hr.renderer.labels.template.radius = am4core.percent(1);    
+    axis_hr.renderer.ticks.template.stroke = am4core.color("#ffffff");
+    
+    
+    ''' + str("".join(heartrate_zone_ranges)) + '''
+    
+    var hand_hr = chart.hands.push(new am4charts.ClockHand());
+    hand_hr.axis = axis_hr;
+    hand_hr.innerRadius = am4core.percent(80);
+    hand_hr.startWidth = 5;
+    hand_hr.pin.disabled = true;
+    hand_hr.value = 50;
+    hand_hr.fill = am4core.color("#ffffff");
+    hand_hr.stroke = am4core.color("#ffffff");
+    
+    
+    var label_hr = chart.radarContainer.createChild(am4core.Label);
+    label_hr.fontSize = 20;
+    label_hr.innerRadius = 40;
+    label_hr.y = -185;
+    label_hr.textAlign = "middle";;
+    label_hr.fill = am4core.color("#ffffff");
+    label_hr.horizontalCenter = "middle";
+    label_hr.text = "";
+
+    '''
+
+def get_heartrate_gauge_animation():
+    return '''
+          label_hr.text = hr[seconds_from_dif] + " bmp"         
+          var animation2 = new am4core.Animation(hand_hr, {
+            property: "value",
+            to: hr[seconds_from_dif]
+          }, 1000, am4core.ease.cubicOut).start();    
+    '''
+
+
+def write_html(activity_df, activity_metric, activity_intervals,  altitude_entities, interval_entities, selected_interval_entities,  czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
 
-    temp_df = activity_df.filter(['seconds', 'power', 'heart.rate',  'speed'])
+    temp_df = activity_df.filter(['seconds', 'power', 'heart.rate', 'speed'])
     new_index = pd.Index(np.arange(0, activity_df.seconds.tolist()[-1]), name="seconds")
     temp_df = temp_df.set_index("seconds").reindex(new_index).reset_index()
     temp_df.speed = temp_df.speed.round(1)
@@ -353,8 +480,27 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
             } '''
         )
 
+    status_selected_interval = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if selected_interval_entities == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
 
-    return '''
+    status_power = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if power_zone_ranges == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
+    power_values = str(temp_df.power.tolist()) if "power" in temp_df else "[]"
+    power_gauge_axis = "" if power_zone_ranges == "" else get_power_gauge(power_zone_ranges, max_watt)
+    power_gauge_animation = "" if power_zone_ranges == "" else get_power_gauge_animation()
+
+    status_heartrate = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if heartrate_zone_ranges == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
+    heartrate_values = str(temp_df['heart.rate'].tolist()) if "heart.rate" in temp_df else "[]"
+    heartrate_gauge_axis = "" if heartrate_zone_ranges == "" else get_heartrate_gauge(heartrate_zone_ranges, max_hr)
+    heartrate_gauge_animation = "" if heartrate_zone_ranges == "" else get_heartrate_gauge_animation()
+    speed_overwrite = '''
+        axis3_speed.renderer.innerRadius = 40
+        axis2_speed.renderer.radius = am4core.percent(80);
+        axis_speed.renderer.radius = am4core.percent(80);
+        hand_speed.innerRadius = am4core.percent(25);
+        ''' if heartrate_zone_ranges == "" else ""
+
+
+
+    html = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -366,7 +512,7 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
     }
     
     #cesiumContainer {
-      height: 600px;
+      height: 450px;
       margin: 1em auto;
     }
 
@@ -383,6 +529,11 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
 
     .toggle.ios, .toggle-on.ios, .toggle-off.ios { border-radius: 20px; }
     .toggle.ios .toggle-handle { border-radius: 20px; }
+
+    .box {border:2px solid #0094ff;}
+    .box h2 {background:#0094ff;color:white;padding:10px;}
+    .box p {color:#333;padding:10px;}
+        
     </style>
   <meta charset="utf-8">
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.65/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
@@ -405,33 +556,53 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
     <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
     
     <div id="cesiumContainer" ></div>
-    <div class="dropdown" align="center" >
-        <input type="checkbox" id="toggle-altitude" checked data-on="ALTITUDE" data-off="ALTITUDE" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
-        <input type="checkbox" id="toggle-interval" checked data-on="INTERVAL" data-off="INTERVAL" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
-        <input type="checkbox" id="toggle-hr" checked data-on="HR" data-off="HR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
-        <input type="checkbox" id="toggle-pwr" checked data-on="PWR" data-off="PWR" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >
-        <input type="checkbox" id="toggle-speed" checked data-on="SPEED" data-off="SPEED" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="danger" data-style="ios" data-width="100" >        
-    </div>
-    <div class="dropdown" align="center" style="padding-top: 10px;">
-      <button class="btn btn-secondary dropdown-toggle selected_interval" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 20px;">
-        Select Interval Type
-      </button>
-      <div class="dropdown-menu dropdown-selected_interval" aria-labelledby="dropdownMenuButton">
-        ''' + str("".join(interval_list)) + '''
-      </div>
-    </div>    
+    
+    
+    <div class="row" align="center">
+        <div class="col-xs-6 col-md-7">
+            <div class="card bg-dark" >
+                <h5 class="card-header text-white  bg-info ">Map settings</h5>
+                <div class="card-body " style="padding-top: 5px; padding-bottom: 5px;">
+                    <input type="checkbox" id="toggle-altitude" checked data-on="Altitude" data-off="Altitude" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="warning" data-style="ios" data-width="100" data-height="40px">
+                    <input type="checkbox" id="toggle-interval" checked data-on="Interval" data-off="Interval" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="warning" data-style="ios" data-width="100" data-height="40px">
+                    <class="dropdown" style="padding-top: 5px;padding-bottom: 5px;">
+                    <button class="btn btn-secondary dropdown-toggle selected_interval" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 20px;height:40px;">
+                      Select interval type
+                    </button>
+                    <div class="dropdown-menu dropdown-selected_interval" aria-labelledby="dropdownMenuButton">
+                      ''' + str("".join(interval_list)) + '''
+                    </div>
+                    <input type="checkbox" id="toggle-gc-selected-interval" ''' + status_selected_interval + ''' data-on="Selected intervals" data-off="Selected intervals" data-toggle="toggle" data-size="small" data-style="ios" data-width="150" data-height="40px">
+                    <input type="checkbox" id="toggle-entire-ride" unchecked data-on="Entire ride" data-off="Entire ride" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="warning" data-style="ios" data-width="100" data-height="40px">                                     
+                </div>
+            </div> 
+        </div>
+        <div class="col-xs-6 col-md-5">
+            <div class="card bg-dark" data-width="100px">
+                <h5 class="card-header text-white bg-info">Graph settings</h5>
+                <div class="card-body" style="padding-top: 5px; padding-bottom: 5px;">
+                    <input type="checkbox" id="toggle-hr" ''' + status_heartrate + ''' data-on="HR" data-off="HR" data-toggle="toggle" data-size="small" data-style="ios" data-width="100" data-height="40px">
+                    <input type="checkbox" id="toggle-pwr" ''' + status_power + ''' data-on="Power" data-off="Power" data-toggle="toggle" data-size="small" data-style="ios" data-width="100" data-height="40px">
+                    <input type="checkbox" id="toggle-speed" checked data-on="Speed" data-off="Speed" data-toggle="toggle" data-size="small" data-onstyle="success" data-offstyle="warning" data-style="ios" data-width="100" data-height="40px">
+                </div>       
+            </div>
+        </div>
+    </div> 
+          
+   
     <div id="container"></div> 
     <script>
     ''' + provided_api_key + '''
     var nan = NaN;    
-    var power = ''' + str(temp_df.power.tolist()) + ''';
+    var power = ''' + power_values + ''';
     var speed = ''' + str(temp_df.speed.tolist()) + ''';
-    var hr = ''' + str(temp_df['heart.rate'].tolist()) + ''';
-    
-    ''' + czml + '''
+    var hr = ''' + heartrate_values + ''';
+
     var viewer = new Cesium.Viewer('cesiumContainer', {
         shouldAnimate : true
     });
+    
+    ''' + czml + '''
     ''' + str("".join(altitude_entities)) + '''
     
     ''' + str("".join(interval_entities)) + '''
@@ -441,6 +612,8 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
         viewer.trackedEntity = ds.entities.getById('path');
     });
     
+    ''' + selected_interval_entities + '''
+        
     viewer.flyTo(altitudeDataSource);
 
     
@@ -472,37 +645,7 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
     var chart = chartContainer.createChild(am4charts.GaugeChart);
     chart.innerRadius = -15;
     
-    var axis_pwr = chart.xAxes.push(new am4charts.ValueAxis());
-    axis_pwr.min = 0;
-    axis_pwr.max = ''' + str(max_watt) + ''';
-    axis_pwr.strictMinMax = true;
-    axis_pwr.renderer.grid.template.disabled = true;
-    axis_pwr.renderer.labels.template.fill = am4core.color("''' + gc_text_color + '''");
-    axis_pwr.renderer.labels.template.radius = am4core.percent(1);    
-    axis_pwr.renderer.ticks.template.stroke = am4core.color("''' + gc_text_color + '''");
-
-    
-    
-    ''' + str("".join(power_zone_ranges)) + '''
-    
-    var hand_pwr = chart.hands.push(new am4charts.ClockHand());
-    hand_pwr.innerRadius = am4core.percent(85);
-    hand_pwr.startWidth = 5;
-    hand_pwr.pin.disabled = true;
-    hand_pwr.value = 0;
-    hand_pwr.fill = am4core.color("''' + gc_text_color + '''");
-    hand_pwr.stroke = am4core.color("''' + gc_text_color + '''");
-    
-    
-    var label_pwr = chart.radarContainer.createChild(am4core.Label);
-    label_pwr.fontSize = 20;
-    label_pwr.innerRadius = 80;
-    label_pwr.y = -265;
-    label_pwr.textAlign = "middle";;
-    label_pwr.fill = am4core.color("''' + gc_text_color + '''");
-    label_pwr.horizontalCenter = "middle";
-    label_pwr.text = "";
-
+    ''' + power_gauge_axis + '''
     
     var axis_speed = chart.xAxes.push(new am4charts.ValueAxis);
     axis_speed.min = 0;
@@ -584,42 +727,12 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
     hand_speed.fill = am4core.color("''' + gc_text_color + '''");
     hand_speed.stroke = am4core.color("''' + gc_text_color + '''");    
 
+    /** 
+    * Overwrite value when no heart rate data is found
+    **/
+    ''' + speed_overwrite + '''
 
-
-
-    var axis_hr = chart.xAxes.push(new am4charts.ValueAxis());
-    axis_hr.min = 40;
-    axis_hr.max = ''' + str(max_hr) + ''';
-    axis_hr.renderer.radius = am4core.percent(70);
-    axis_hr.strictMinMax = true;
-    axis_hr.renderer.grid.template.disabled = true;
-    axis_hr.renderer.labels.template.fill = am4core.color("#ffffff");
-    axis_hr.renderer.labels.template.radius = am4core.percent(1);    
-    axis_hr.renderer.ticks.template.stroke = am4core.color("#ffffff");
-    
-    
-    ''' + str("".join(heartrate_zone_ranges)) + '''
-    
-    var hand_hr = chart.hands.push(new am4charts.ClockHand());
-    hand_hr.axis = axis_hr;
-    hand_hr.innerRadius = am4core.percent(80);
-    hand_hr.startWidth = 5;
-    hand_hr.pin.disabled = true;
-    hand_hr.value = 50;
-    hand_hr.fill = am4core.color("#ffffff");
-    hand_hr.stroke = am4core.color("#ffffff");
-    
-    
-    var label_hr = chart.radarContainer.createChild(am4core.Label);
-    label_hr.fontSize = 20;
-    label_hr.innerRadius = 40;
-    label_hr.y = -185;
-    label_hr.textAlign = "middle";;
-    label_hr.fill = am4core.color("#ffffff");
-    label_hr.horizontalCenter = "middle";
-    label_hr.text = "";
-
-
+    ''' + heartrate_gauge_axis + '''
 
     $(function() {
         $('#toggle-hr').change(function() {
@@ -681,6 +794,15 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
     })
   })    
 
+    $(function() {
+            $('#toggle-gc-selected-interval').change(function() {
+                if(selectedIntervalsDataSource.show == false){
+                    selectedIntervalsDataSource.show = true;
+                }else{
+                    selectedIntervalsDataSource.show = false;
+                }
+        })
+      })    
 
 
   $(function() {
@@ -692,6 +814,17 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
             }
     })
   })    
+
+  $(function() {
+        $('#toggle-entire-ride').change(function() {
+            if(completeRideDataSource.show == false){
+                completeRideDataSource.show = true;
+            }else{
+                completeRideDataSource.show = false;
+            }
+    })
+  })    
+
 
 
     $('.dropdown-selected_interval a').click(function(e){
@@ -722,17 +855,11 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
           var current_date = new Date(Cesium.JulianDate.toIso8601(currentTime, 0));
           var dif = current_date.getTime() - start_date.getTime();
           var seconds_from_dif = dif / 1000;
-          label_pwr.text = power[seconds_from_dif] + " Watt"
-          label_hr.text = hr[seconds_from_dif] + " bmp"         
+          
+          ''' + power_gauge_animation + '''
+          ''' + heartrate_gauge_animation + '''
+    
           label_speed.text = speed[seconds_from_dif] + " km/h"
-          var animation = new am4core.Animation(hand_pwr, {
-            property: "value",
-            to: power[seconds_from_dif]
-          }, 1000, am4core.ease.cubicOut).start();
-          var animation2 = new am4core.Animation(hand_hr, {
-            property: "value",
-            to: hr[seconds_from_dif]
-          }, 1000, am4core.ease.cubicOut).start();
           var animation3 = new am4core.Animation(hand_speed, {
             property: "value",
             to: speed[seconds_from_dif]
@@ -746,6 +873,39 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
 </body>
 </html>
 '''
+    temp_file.writelines(html)
+    temp_file.close()
+
+
+
+def write_no_valid_data_html():
+    html = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        color: ''' + gc_text_color + ''';
+    }
+        
+    .black_back{
+        background-color:  #343434;
+    }
+
+        
+    </style>
+  <meta charset="utf-8">
+  
+</head>
+<body class="black_back">
+    <h1 align="center"> NO GPS DATA FOUND<h1>
+</body>
+</html>        
+        '''
+    temp_file.writelines(html)
+    temp_file.close()
 
 
 if __name__ == "__main__":
