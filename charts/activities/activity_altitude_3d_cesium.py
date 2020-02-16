@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V7 (Py)
+Altitude 3d Cesium V8 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -13,6 +13,7 @@ V4 - 2020-02-09 - fix pause fill gaps with nan add speed gauge
 V5 - 2020-02-14 - add HR and toggle buttons
 V6 - 2020-02-15 - add altitude toggle + add interval selection
 V7 - 2020-02-16 - make more robust for missing data + update selection layout
+V8 - 2020-02-16 - fix typo + fix selection multiple intervals
 
 """
 
@@ -48,12 +49,15 @@ hr_zone_pct = [0, 68, 83, 94, 105]
 zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
 
 def main():
+    start_t = datetime.now()
     activity = GC.activity()
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
     zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
     activity_df = pd.DataFrame(activity, index=activity['seconds'])
     season_peaks = GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=1)
+    print('Gathering data duration: {}'.format(datetime.now() - start_t))
+
     max_watt = max(season_peaks['peak_power_1'])
     # For testing purpose select only x number of seconds
     if temp_duration_selection:
@@ -63,16 +67,30 @@ def main():
 
     # Stop if no gps data is found in the activity
     if "latitude" in activity:
+        start_t = datetime.now()
         interval_entities = get_interval_entities(activity_df, activity_intervals, zones)
-        altitude_entities = determine_altitude_entities(activity_df, zones, slice_distance)
+        print('Get interval entities duration: {}'.format(datetime.now() - start_t))
 
-        selected_interval_entities = get_selected_interval_entities(activity_df, activity_intervals)
+        start_t = datetime.now()
+        altitude_entities = determine_altitude_entities(activity_df, zones, slice_distance)
+        print('Get altitude entities duration: {}'.format(datetime.now() - start_t))
+
+        start_t = datetime.now()
+        selected_interval_entities, selected_interval_data_sources = get_selected_interval_entities(activity_df, activity_intervals)
+        print('Get select intervals entities duration: {}'.format(datetime.now() - start_t))
+
+        start_t = datetime.now()
         czml_block = get_czml_block_str(activity_df, activity_metric)
+        print('Get entire ride entities + ride path duration: {}'.format(datetime.now() - start_t))
+
+        start_t = datetime.now()
         if "power" in activity:
             power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
         else:
             power_zone_ranges = ""
+        print('Get power ranges duration: {}'.format(datetime.now() - start_t))
 
+        start_t = datetime.now()
         hr_lthr = zones['lthr'][0]
         hr_max = zones['hrmax'][0]
         zones_hr = []
@@ -82,11 +100,24 @@ def main():
             hr_zone_ranges = get_zone_ranges(zones_hr, zone_hr_colors, hr_max, axis="axis_hr")
         else:
             hr_zone_ranges = ""
+        print('Get heart rate ranges duration: {}'.format(datetime.now() - start_t))
 
-        html = write_html(activity_df, activity_metric, activity_intervals, altitude_entities, interval_entities, selected_interval_entities,  czml_block, power_zone_ranges, max_watt, hr_zone_ranges, hr_max)
+        start_t = datetime.now()
+        write_html(activity_df,
+                          activity_metric,
+                          activity_intervals,
+                          altitude_entities,
+                          interval_entities,
+                          selected_interval_entities,
+                          selected_interval_data_sources,
+                          czml_block,
+                          power_zone_ranges,
+                          max_watt,
+                          hr_zone_ranges,
+                          hr_max)
+        print('write html duration: {}'.format(datetime.now() - start_t))
     else:
         write_no_valid_data_html()
-
 
     GC.webpage(pathlib.Path(temp_file.name).as_uri())
 
@@ -104,7 +135,6 @@ def get_interval_entities(activity_df, activity_intervals, zones):
         for index, row in selected_intervals.iterrows():
             index_color = bisect.bisect_right(coloring_df.breaks, row['Average_Power'])
             color = coloring_df.colors[index_color - 1]
-            print("Processing interval '" + str(interval_type) + "'(" + str(index) + "):" + str(row['name']))
             filtered_df = activity_df[(activity_df.seconds >= row['start']) & (activity_df.seconds <= row['stop'])]
             lat_long_str = str((filtered_df.longitude.map(str) + "," + filtered_df.latitude.map(str)).tolist()).replace("'", "")
             e1.append(data_source_name + '''.entities.add(
@@ -151,36 +181,41 @@ def get_zone_ranges(zones, zones_colors, max_range, axis="axis_pwr"):
 
 
 def get_selected_interval_entities(activity_df, activity_intervals):
-    lap = list(activity_intervals["selected"])
-    positions = []
-    selected_interval_names = []
-    for index in list(compress(range(len(lap)), lap)):
-        selected_interval_names.append(activity_intervals["name"][index])
-        selected_interval_start = int(activity_intervals["start"][index]) + 1
-        selected_interval_stop = int(activity_intervals["stop"][index]) + 1
-        selected_interval_df = activity_df.loc[selected_interval_start:selected_interval_stop].copy()
-        positions = str((selected_interval_df.longitude.map(str) + ", " + selected_interval_df.latitude.map(str) + ", " + selected_interval_df.altitude.map(str)).tolist()).replace("'", "")
-
     if not pd.DataFrame(activity_intervals).selected.any():
-        return ""
+        return "", ""
     else:
-        return '''
-        var selectedIntervalsDataSource = new Cesium.CustomDataSource(\"selectedIntervalsDataSource\");    
-        selectedIntervalsDataSource.entities.add(
-                    {
-                        name : ' ''' + str("".join(selected_interval_names)) + '''  ',
-                        polyline : {
-                            positions : Cesium.Cartesian3.fromDegreesArrayHeights(
-                                ''' + str("".join(positions)) + '''                                                        
-                            ),
-                        width : 5,
-                        material : Cesium.Color.BLUE,
-                        }       
-                    }
-                );
-        viewer.dataSources.add(selectedIntervalsDataSource);
-        selectedIntervalsDataSource.show = true;                        
-        '''
+        lap = list(activity_intervals["selected"])
+        selected_interval_names = []
+        e = []
+        data_source_names = []
+
+        for index in list(compress(range(len(lap)), lap)):
+            selected_interval_name = activity_intervals["name"][index].replace("'", "\\'")
+            selected_interval_start = int(activity_intervals["start"][index]) + 1
+            selected_interval_stop = int(activity_intervals["stop"][index]) + 1
+            selected_interval_df = activity_df.loc[selected_interval_start:selected_interval_stop].copy()
+            positions = str((selected_interval_df.longitude.map(str) + ", " + selected_interval_df.latitude.map(
+                str) + ", " + selected_interval_df.altitude.map(str)).tolist()).replace("'", "")
+            data_source_name = "selectedIntervalsDataSource" + str(index)
+            data_source_names.append(data_source_name)
+            e.append('''
+            var ''' + data_source_name + ''' = new Cesium.CustomDataSource(\"''' + data_source_name + '''\");    
+            ''' + data_source_name + '''.entities.add(
+                        {
+                            name : ' ''' + str(selected_interval_name) + '''  ',
+                            polyline : {
+                                positions : Cesium.Cartesian3.fromDegreesArrayHeights(
+                                    ''' + str(positions) + '''                                                        
+                                ),
+                            width : 5,
+                            material : Cesium.Color.BLUE,
+                            }       
+                        }
+                    );
+            viewer.dataSources.add(''' + data_source_name + ''');
+            ''' + data_source_name + '''.show = true;                        
+            ''')
+    return e, data_source_names
 
 
 def get_czml_block_str(activity, activity_metric):
@@ -400,7 +435,7 @@ def get_power_gauge(power_zone_ranges, max_watt):
 
 def get_power_gauge_animation():
     return ''' 
-      label_pwr.text = power[seconds_from_dif] + " Watt"
+      label_pwr.text = power[seconds_from_dif] + " watt"
       var animation = new am4core.Animation(hand_pwr, {
         property: "value",
         to: power[seconds_from_dif]
@@ -444,9 +479,10 @@ def get_heartrate_gauge(heartrate_zone_ranges, max_hr):
 
     '''
 
+
 def get_heartrate_gauge_animation():
     return '''
-          label_hr.text = hr[seconds_from_dif] + " bmp"         
+          label_hr.text = hr[seconds_from_dif] + " bpm"         
           var animation2 = new am4core.Animation(hand_hr, {
             property: "value",
             to: hr[seconds_from_dif]
@@ -454,7 +490,18 @@ def get_heartrate_gauge_animation():
     '''
 
 
-def write_html(activity_df, activity_metric, activity_intervals,  altitude_entities, interval_entities, selected_interval_entities,  czml, power_zone_ranges, max_watt, heartrate_zone_ranges, max_hr):
+def write_html(activity_df,
+               activity_metric,
+               activity_intervals,
+               altitude_entities,
+               interval_entities,
+               selected_interval_entities,
+               selected_interval_data_sources,
+               czml,
+               power_zone_ranges,
+               max_watt,
+               heartrate_zone_ranges,
+               max_hr):
     act_datetime = datetime.combine(activity_metric['date'], activity_metric['time'])
     start_time_str = act_datetime.isoformat() + "Z"
 
@@ -497,7 +544,13 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
         hand_speed.innerRadius = am4core.percent(25);
         ''' if heartrate_zone_ranges == "" else ""
 
-
+    selected_interval_data_sources_show = []
+    selected_interval_data_sources_hide = []
+    selected_interval_data_sources_show_check = "true"
+    for i in selected_interval_data_sources:
+        selected_interval_data_sources_show_check = str(i + ".show == false")
+        selected_interval_data_sources_show.append(str(i + ".show = true;\n"))
+        selected_interval_data_sources_hide.append(str(i + ".show = false;\n"))
 
     html = '''
 <!DOCTYPE html>
@@ -611,7 +664,7 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
         viewer.trackedEntity = ds.entities.getById('path');
     });
     
-    ''' + selected_interval_entities + '''
+    ''' + str("".join(selected_interval_entities)) + '''
         
     viewer.flyTo(altitudeDataSource);
 
@@ -795,10 +848,10 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
 
     $(function() {
             $('#toggle-gc-selected-interval').change(function() {
-                if(selectedIntervalsDataSource.show == false){
-                    selectedIntervalsDataSource.show = true;
+                if(''' + selected_interval_data_sources_show_check + '''){
+                    ''' + str("".join(selected_interval_data_sources_show)) + '''
                 }else{
-                    selectedIntervalsDataSource.show = false;
+                    ''' + str("".join(selected_interval_data_sources_hide)) + '''
                 }
         })
       })    
@@ -855,8 +908,8 @@ def write_html(activity_df, activity_metric, activity_intervals,  altitude_entit
           var dif = current_date.getTime() - start_date.getTime();
           var seconds_from_dif = dif / 1000;
           
-          ''' + power_gauge_animation + '''
-          ''' + heartrate_gauge_animation + '''
+          ''' + str(power_gauge_animation) + '''
+          ''' + str(heartrate_gauge_animation) + '''
     
           label_speed.text = speed[seconds_from_dif] + " km/h"
           var animation3 = new am4core.Animation(hand_speed, {
@@ -908,4 +961,6 @@ def write_no_valid_data_html():
 
 
 if __name__ == "__main__":
+    start_time = datetime.now()
     main()
+    print('Total duration: {}'.format(datetime.now() - start_time))
