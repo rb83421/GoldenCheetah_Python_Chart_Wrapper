@@ -49,7 +49,6 @@ zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
 
 def main():
     activity = GC.activity()
-    #temp
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
     zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
