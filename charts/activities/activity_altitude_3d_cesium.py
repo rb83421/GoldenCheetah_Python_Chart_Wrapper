@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V8 (Py)
+Altitude 3d Cesium V9 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -14,11 +14,12 @@ V5 - 2020-02-14 - add HR and toggle buttons
 V6 - 2020-02-15 - add altitude toggle + add interval selection
 V7 - 2020-02-16 - make more robust for missing data + update selection layout
 V8 - 2020-02-16 - fix typo + fix selection multiple intervals
-
+V9 - 2020-02-20 - make interval name robust with special characters
 """
 
 from GC_Wrapper import GC_wrapper as GC
 
+import html
 from datetime import datetime, timedelta
 import bisect
 import pathlib
@@ -47,6 +48,7 @@ API_KEY = None
 # HR percentage zone taken over from Options->Athlete->Zones-Heartrate Zones->Default
 hr_zone_pct = [0, 68, 83, 94, 105]
 zone_hr_colors = ["#ff00ff", "#00aaff", "#00ff80", "#ffd500", "#ff0000"]
+
 
 def main():
     start_t = datetime.now()
@@ -139,7 +141,7 @@ def get_interval_entities(activity_df, activity_intervals, zones):
             lat_long_str = str((filtered_df.longitude.map(str) + "," + filtered_df.latitude.map(str)).tolist()).replace("'", "")
             e1.append(data_source_name + '''.entities.add(
                 {
-                    name : ' ''' + row['name'].replace("'", "\\'") + '''  ',
+                    name : ' ''' + str(html.escape(row['name']).encode('utf-8')).split("'")[1] + '''  ',
                     wall : {
                         positions : Cesium.Cartesian3.fromDegreesArray(
                             ''' + lat_long_str + '''                                                        
@@ -156,7 +158,6 @@ def get_interval_entities(activity_df, activity_intervals, zones):
                 }
             );
             ''')
-
         e.append(str("".join(e1)))
         e.append("viewer.dataSources.add(" + data_source_name + ");\n")
         e.append(data_source_name + ".show = false;\n")
@@ -190,7 +191,7 @@ def get_selected_interval_entities(activity_df, activity_intervals):
         data_source_names = []
 
         for index in list(compress(range(len(lap)), lap)):
-            selected_interval_name = activity_intervals["name"][index].replace("'", "\\'")
+            selected_interval_name = str(html.escape(activity_intervals['name'][index]).encode('utf-8')).split("'")[1]
             selected_interval_start = int(activity_intervals["start"][index]) + 1
             selected_interval_stop = int(activity_intervals["stop"][index]) + 1
             selected_interval_df = activity_df.loc[selected_interval_start:selected_interval_stop].copy()
