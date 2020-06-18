@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V9 (Py)
+Altitude 3d Cesium V10 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -15,6 +15,8 @@ V6 - 2020-02-15 - add altitude toggle + add interval selection
 V7 - 2020-02-16 - make more robust for missing data + update selection layout
 V8 - 2020-02-16 - fix typo + fix selection multiple intervals
 V9 - 2020-02-20 - make interval name robust with special characters
+V10 - 2020-06-18 - small fixes when ride without power is selected
+
 """
 
 from GC_Wrapper import GC_wrapper as GC
@@ -60,7 +62,6 @@ def main():
     season_peaks = GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=1)
     print('Gathering data duration: {}'.format(datetime.now() - start_t))
 
-    max_watt = max(season_peaks['peak_power_1'])
     # For testing purpose select only x number of seconds
     if temp_duration_selection:
         activity_df = activity_df.head(temp_duration_selection)
@@ -87,8 +88,10 @@ def main():
 
         start_t = datetime.now()
         if "power" in activity:
+            max_watt = max(season_peaks['peak_power_1'])
             power_zone_ranges = get_zone_ranges(zones['zoneslow'][0], zones['zonescolor'][0], max_watt)
         else:
+            max_watt = 1500
             power_zone_ranges = ""
         print('Get power ranges duration: {}'.format(datetime.now() - start_t))
 
