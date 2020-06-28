@@ -11,9 +11,6 @@
 # V5 - 2020-06-28 - WIP add selection in graph
 import calendar
 
-from numpy.ma import arange
-from pandas import Index
-
 from GC_Wrapper import GC_wrapper as GC
 
 import sys
@@ -31,7 +28,6 @@ import pandas as pd
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
 import os
-import json
 import numpy as np
 
 # Define GC background color
@@ -131,7 +127,7 @@ def main():
     assets_dir = write_css()
     app = dash.Dash(assets_folder=assets_dir)
 
-    season_metrics = pd.DataFrame(GC.seasonMetrics(all=False)) #needs to be true
+    season_metrics = pd.DataFrame(GC.seasonMetrics(all=True))
     season_metrics['year'] = pd.to_datetime(season_metrics.date).dt.year
 
     years = sorted(season_metrics.year.unique().tolist(), reverse=True)
@@ -365,7 +361,7 @@ def kill_previous_dash_server():
 
 
 def run_server(dash_app):
-    dash_app.run_server(debug=True)
+    dash_app.run_server(debug=False)
 
 
 def wait_for_server():
@@ -387,9 +383,9 @@ def wait_for_server():
 if __name__ == '__main__':
     # Redirect stdout when running in GC else you get and CatchOutErr on file.flush of flask app
     # Temp till the following issue is fixed: https://github.com/GoldenCheetah/GoldenCheetah/issues/3293
-    # sys.stdout = open(os.path.join(tempfile.gettempdir(), "GC_server_annual_progress_year.log"), 'a')
-    # kill_previous_dash_server()
-    # threading.Thread(target=run_server, args=(main(),), name="dash").start()
-    # wait_for_server()
-    run_server(main())
+    sys.stdout = open(os.path.join(tempfile.gettempdir(), "GC_server_annual_progress_year.log"), 'a')
+    kill_previous_dash_server()
+    threading.Thread(target=run_server, args=(main(),), name="dash").start()
+    wait_for_server()
+    # run_server(main())
     GC.webpage("http://127.0.0.1:8050/")
