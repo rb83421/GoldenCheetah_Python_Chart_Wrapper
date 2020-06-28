@@ -8,6 +8,11 @@
 # V2 - 2020-01-11 - Fix threading (kill threads before start multiple dash chart_not_working_yet_after_single_extract)
 # V3 - 2020-01-24 - add wait for server before loading webpage
 # V4 - 2020-02-01 - make linux compatible
+# V5 - 2020-06-28 - WIP add selection in graph
+import calendar
+
+from numpy.ma import arange
+from pandas import Index
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -26,6 +31,8 @@ import pandas as pd
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output
 import os
+import json
+import numpy as np
 
 # Define GC background color
 gc_bg_color = "#343434"  # 'rgb(52,52,52)'
@@ -33,6 +40,12 @@ gc_bg_color = "#343434"  # 'rgb(52,52,52)'
 gc_text_color = "#ffffff"  # 'rgb(255,255,255)'
 chart_title_size = 10
 
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'hidden'
+    }
+}
 
 def get_cumulative_metrics():
     data = [
@@ -113,13 +126,13 @@ def get_cumulative_metrics():
     return pd.DataFrame(data, columns=['metric', 'type'])
 
 
+
 def main():
     assets_dir = write_css()
     app = dash.Dash(assets_folder=assets_dir)
 
-    season_metrics = pd.DataFrame(GC.seasonMetrics(all=True))
+    season_metrics = pd.DataFrame(GC.seasonMetrics(all=False)) #needs to be true
     season_metrics['year'] = pd.to_datetime(season_metrics.date).dt.year
-    season_metrics['day_of_year'] = pd.to_datetime(season_metrics.date).dt.dayofyear
 
     years = sorted(season_metrics.year.unique().tolist(), reverse=True)
     year_options = []
@@ -143,6 +156,8 @@ def main():
                                     style={"display": "block", "width": "60%", "margin-left": "auto",
                                            "margin-right": "auto"}),
                            html.Div([dcc.Graph(id="my-graph")]),
+                           html.Div([html.Pre(id='click-data', style=styles['pre']),
+                           ], className='three columns'),
                            ], className="container")
 
     @app.callback(
@@ -150,29 +165,58 @@ def main():
         [Input('year-value', 'value'),
          Input('type-value', 'value'), ])
     def update_figure(selected, metric):
+        print("update figure")
         metric_type = cumulative_metrics[cumulative_metrics.metric == metric].type.tolist()[0]
         trace = []
         max_cumsum = pd.Series(0)
         for selected_year in selected:
-            dff = season_metrics[season_metrics.year == selected_year]
+            # filter year and selected metric
+            dff = season_metrics[season_metrics.year == selected_year][['date', 'year', metric]].copy()
+
+            # summarize metric when multiple entries on one day
+            dff[metric] = dff.groupby(['date'])[metric].transform('sum')
+            # delete duplicate dates
+            dff = dff.drop_duplicates(subset=['date'])
+
+            # add days when no entry with (needed later for selection)
+            processing_year = dff.year.iloc[0]
+            current_year = datetime.now().year
+            if processing_year == current_year:
+                idx = pd.date_range('01-01-' + str(processing_year), dff.date.iloc[-1])
+            else:
+                idx = pd.date_range('01-01-' + str(processing_year), '31-12-' + str(dff.year.iloc[-1]))
+            dff = dff.set_index('date')
+            dff.index = pd.DatetimeIndex(dff.index)
+            dff = dff.reindex(idx, fill_value=0)
+
+            # transform month number to readable month
+            dff['month'] = pd.to_datetime(dff.index).month
+            dff.month = dff.month.apply(lambda x: calendar.month_abbr[x])
+            dff["period"] = pd.to_datetime(dff.index).day.astype(str) + '-' + dff.month
+
+
+            # add column with the summurized values and interpolate in between values
+            dff['cumsum_'+str(metric)] = dff[metric].cumsum()
+            # dff['cumsum_'+str(metric)] = dff['cumsum_' + str(metric)].interpolate()
+
+            # create an opacity value for the days entries are found an marker can be placed
+            dff['opacity'] = np.where(dff[metric] == 0.0, 0, 0.6)
+
             if metric_type == 'time':
                 hover_text = [
                     str(metric) + ": " + str(format_hms_seconds(duration)) + "<br>Date: " + date.strftime("%d-%m-%Y")
-                    for duration, date in zip(dff[metric].cumsum().tolist(), dff.date)]
+                    for duration, date in zip(dff[metric].cumsum().tolist(), dff.index)]
             else:
                 hover_text = [str(metric) + ": " + str(cumsum) + "<br>Date: " + date.strftime("%d-%m-%Y") for
-                              cumsum, date in zip(dff[metric].cumsum().tolist(), dff.date)]
-            y = dff[metric].cumsum()
-            if max_cumsum.max() < y.max():
-                max_cumsum = y
+                              cumsum, date in zip(dff[metric].cumsum().tolist(), dff.index)]
 
-            trace.append(go.Scatter(x=dff.day_of_year,
-                                    y=y,
+            trace.append(go.Scatter(x=dff.period,
+                                    y=dff['cumsum_'+str(metric)],
                                     name=selected_year,
                                     mode='lines+markers',
                                     hoverinfo="text",
                                     hovertext=hover_text,
-                                    marker={'size': 8, "opacity": 0.6, "line": {'width': 0.5}}, ))
+                                    marker={'size': 8, "opacity": dff.opacity, "line": {'width': 0.5}}, ))
 
         if metric_type == 'time':
             cumsum = max_cumsum.tolist()
@@ -191,7 +235,6 @@ def main():
 
         tickvals_x = [i for i in range(1, 365, 10)]
         tickvals_x.append(365)
-        # pd.to_datetime(dff.day_of_year, format='%j')
         ticktext_x = [datetime.strptime(str(tickval), "%j").strftime("%d-%b") for tickval in tickvals_x]
 
         return {
@@ -206,6 +249,7 @@ def main():
                                 yaxis=yaxis,
                                 paper_bgcolor=gc_bg_color,
                                 plot_bgcolor=gc_bg_color,
+                                clickmode='event',
                                 font=dict(
                                     color=gc_text_color,
                                     size=chart_title_size,
@@ -213,6 +257,49 @@ def main():
 
                                 )
         }
+
+    @app.callback(
+        Output('click-data', 'children'),
+        [Input('my-graph', 'clickData'),
+         Input('year-value', 'value'),
+         Input('type-value', 'value'), ]
+    )
+    def display_click_data(click_data, selected_years, metric):
+        if click_data:
+            df = pd.DataFrame()
+
+            for point in click_data['points']:
+                new_row = {'year': point['hovertext'].split('-')[-1], 'metric': round(point['y'], 2)}
+                # append row to the dataframe
+                df = df.append(new_row, ignore_index=True)
+
+            selected_x = click_data['points'][0]['x']
+            selected_y = click_data['points'][0]['y']
+
+            print("date selected: " + str(selected_x))
+            print("Cumulative value" + str(selected_y))
+
+            return html.Div([
+                html.H1("Selected Date: " + str(selected_x)),
+
+                html.Table(
+                    # Header
+                    [html.Tr([html.Th(col) for col in df.columns])] +
+
+                    # Body
+                    [html.Tr([
+                        html.Td(
+                            df.iloc[i][col]) for col in df.columns
+                    ]) for i in range(min(len(df), 10))]
+                )
+            ])
+            # return """
+            # Date Selected:  """ + str(selected_x) + """
+            # First Value:  """ + str(selected_y) + """
+            # Raw data : """ + json.dumps(click_data, indent=2) + """
+            #
+            # """
+        return html.Div([html.H1("Selected a date")])
 
     return app
 
@@ -278,7 +365,7 @@ def kill_previous_dash_server():
 
 
 def run_server(dash_app):
-    dash_app.run_server(debug=False)
+    dash_app.run_server(debug=True)
 
 
 def wait_for_server():
@@ -300,9 +387,9 @@ def wait_for_server():
 if __name__ == '__main__':
     # Redirect stdout when running in GC else you get and CatchOutErr on file.flush of flask app
     # Temp till the following issue is fixed: https://github.com/GoldenCheetah/GoldenCheetah/issues/3293
-    sys.stdout = open(os.path.join(tempfile.gettempdir(), "GC_server_annual_progress_year.log"), 'a')
-    kill_previous_dash_server()
-    threading.Thread(target=run_server, args=(main(),), name="dash").start()
-    wait_for_server()
-
+    # sys.stdout = open(os.path.join(tempfile.gettempdir(), "GC_server_annual_progress_year.log"), 'a')
+    # kill_previous_dash_server()
+    # threading.Thread(target=run_server, args=(main(),), name="dash").start()
+    # wait_for_server()
+    run_server(main())
     GC.webpage("http://127.0.0.1:8050/")
