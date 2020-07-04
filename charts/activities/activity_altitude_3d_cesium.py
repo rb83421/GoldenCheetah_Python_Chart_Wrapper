@@ -133,7 +133,7 @@ def get_interval_entities(activity_df, activity_intervals, zones):
     e = []
     for interval_type in activity_intervals_df.type.drop_duplicates().tolist():
         data_source_name = str(interval_type.replace(" ", "_")) + "DataSource"
-        e.append("var " + data_source_name + " = new Cesium.CustomDataSource(\"" + data_source_name + "\");\n")
+        e.append("var " + data_source_name + " = new Cesium.CustomDataSource(\"" + data_source_name + "\");")
 
         selected_intervals = activity_intervals_df[activity_intervals_df.type == interval_type]
         e1 = []
@@ -162,8 +162,8 @@ def get_interval_entities(activity_df, activity_intervals, zones):
             );
             ''')
         e.append(str("".join(e1)))
-        e.append("viewer.dataSources.add(" + data_source_name + ");\n")
-        e.append(data_source_name + ".show = false;\n")
+        e.append("viewer.dataSources.add(" + data_source_name + ");")
+        e.append(data_source_name + ".show = false;")
     return e
 
 
@@ -322,7 +322,7 @@ def determine_altitude_entities(activity_df, zones, slice_value):
     number_slices = activity_df.distance.iloc[-1] / slice_value
     e = []
     altitude_entity_name = "altitudeDataSource"
-    e.append("var " + altitude_entity_name + " = new Cesium.CustomDataSource(\"" + altitude_entity_name + "\");\n")
+    e.append("var " + altitude_entity_name + " = new Cesium.CustomDataSource(\"" + altitude_entity_name + "\");")
     for i in range(int(number_slices)):
         start = i * slice_value
         # last slice take last sample
@@ -398,7 +398,7 @@ def determine_altitude_entities(activity_df, zones, slice_value):
         );
             ''')
 
-    e.append("viewer.dataSources.add(" + altitude_entity_name + ");\n")
+    e.append("viewer.dataSources.add(" + altitude_entity_name + ");")
     return e
 
 
@@ -520,7 +520,7 @@ def write_html(activity_df,
     activity_intervals_df = pd.DataFrame(activity_intervals)
     interval_list = [str("<a class=\"dropdown-item\" href=\"#\">" + interval_type + "</a>") for interval_type in activity_intervals_df.type.drop_duplicates().tolist()]
 
-    hide_interval = [str(interval_type.replace(" ", "_") + "DataSource.show = false;\n") for interval_type in activity_intervals_df.type.drop_duplicates().tolist()]
+    hide_interval = [str(interval_type.replace(" ", "_") + "DataSource.show = false;") for interval_type in activity_intervals_df.type.drop_duplicates().tolist()]
     enable_interval = []
     for interval_type in activity_intervals_df.type.drop_duplicates().tolist():
         enable_interval.append(
@@ -553,8 +553,8 @@ def write_html(activity_df,
     selected_interval_data_sources_show_check = "true"
     for i in selected_interval_data_sources:
         selected_interval_data_sources_show_check = str(i + ".show == false")
-        selected_interval_data_sources_show.append(str(i + ".show = true;\n"))
-        selected_interval_data_sources_hide.append(str(i + ".show = false;\n"))
+        selected_interval_data_sources_show.append(str(i + ".show = true;"))
+        selected_interval_data_sources_hide.append(str(i + ".show = false;"))
 
     html = '''
 <!DOCTYPE html>
