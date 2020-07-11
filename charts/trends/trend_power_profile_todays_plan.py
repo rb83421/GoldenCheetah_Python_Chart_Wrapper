@@ -18,7 +18,7 @@
 from GC_Wrapper import GC_wrapper as GC
 
 import plotly
-import pathlib
+from pathlib import Path
 import bisect
 import tempfile
 import numpy as np
@@ -176,43 +176,42 @@ def main():
 
     y_scale = np.arange(0, len(power_profile_category))
 
+    # Create the plot
+    fig = go.Figure()
+
     # Add annotations used for the y-axis labels
-    annotations = []
     for i in y_scale:
-        annotations.append(
-            dict(
-                x=-0.9,
-                y=i + 0.5,
-                xref='x',
-                yref='y',
-                text=power_profile_category[i],
-                showarrow=False,
-            ))
+        fig.add_annotation(
+            x=-0.9,
+            y=i + 0.5,
+            xref='x',
+            yref='y',
+            text=power_profile_category[i],
+            showarrow=False,
+        )
 
     # Add annotation for athlete information
-    annotations.append(
-        dict(
-            x=len(x_labels) / 2,
-            y=9.8,
-            # x=-0.01,
-            # y=1.1,
-            text="Athlete: " + str(athlete_name)
-                 + '<br>Gender: ' + str(athlete_gender)
-                 + '<br>Weight:' + str(round(athlete_kg, 1)) + "kg  "
-                 + '<br>FTP: ' + str(round(lftp / athlete_kg, 1)) + "W/kg, "
-                 + str(round(lftp)) + "W"
-                 + '<br>CP: ' + str(round(lcp / athlete_kg, 1)) + "W/kg, "
-                 + str(round(lcp)) + "W",
-            showarrow=False,
-            font=dict(
-                size=11,
-                color='rgb(210,210,210)'),
-            align='left',
-        )
+    fig.add_annotation(
+        x=len(x_labels) / 2,
+        y=9.8,
+        # x=-0.01,
+        # y=1.1,
+        text="Athlete: " + str(athlete_name)
+             + '<br>Gender: ' + str(athlete_gender)
+             + '<br>Weight:' + str(round(athlete_kg, 1)) + "kg  "
+             + '<br>FTP: ' + str(round(lftp / athlete_kg, 1)) + "W/kg, "
+             + str(round(lftp)) + "W"
+             + '<br>CP: ' + str(round(lcp / athlete_kg, 1)) + "W/kg, "
+             + str(round(lcp)) + "W",
+        showarrow=False,
+        font=dict(
+            size=11,
+            color='rgb(210,210,210)'),
+        align='left',
     )
 
-    # Add bars  for the best ever peaks mapped on category
-    data = [go.Bar(
+    # Add bars for the best ever peaks mapped on category
+    fig.add_trace(go.Bar(
         x=x_labels,
         y=best_peaks_y_values['peaks_weighted'],
         name='Best Ever',
@@ -223,68 +222,48 @@ def main():
                        best_peaks_y_values['activity_names'])],
 
         hoverinfo="text",
-        marker={
-            # 'opacity': 0.4,
-            'color': 'Orange',
-        }
-    )]
+        marker=dict(
+            color='orange',
+        )
+    ))
 
     # Per date range add a smooth line (spline) to compare to your best
     for season_dict in selected_date_ranges_y:
         print(season_dict)
-        data.append(
-            go.Scatter(
-                x=x_labels,
-                y=season_dict['peaks_weighted'],
-                hovertext=[determine_hover_text(peak, date, name, athlete_kg)
-                           for peak, date, name
-                           in zip(season_dict['peaks'], season_dict['activity_dates'], season_dict['activity_name'])],
+        fig.add_trace(go.Scatter(
+            x=x_labels,
+            y=season_dict['peaks_weighted'],
+            hovertext=[determine_hover_text(peak, date, name, athlete_kg)
+                       for peak, date, name
+                       in zip(season_dict['peaks'], season_dict['activity_dates'], season_dict['activity_name'])],
 
-                hoverinfo="text",
-                mode='lines+markers',
-                showlegend=True,
-                line_shape='spline',
-                name=season_dict['name'],
-                line=dict(color=season_dict['color']),
-            )
-        )
+            hoverinfo="text",
+            mode='lines+markers',
+            showlegend=True,
+            line_shape='spline',
+            name=season_dict['name'],
+            line=dict(color=season_dict['color']),
+        ))
 
     # 11.26 W/Kg for 5s is stated as untrained values
     date_ranges_peaks5 = {'peak_wpk_5': [11.26]}
     average_untrained_weighted = get_category_index_value(5, date_ranges_peaks5, mmpsdf, power_profile_category)
-    annotations.append(
-        dict(
-            x=len(x_labels) - 0.1,
-            y=average_untrained_weighted - 0.2,
-            text='Average <br>Untrained',
-            align='left',
-            showarrow=False,
-        )
+    fig.add_annotation(
+        x=len(x_labels) - 0.1,
+        y=average_untrained_weighted - 0.2,
+        text='Average <br>Untrained',
+        align='left',
+        showarrow=False,
     )
 
-    layout = go.Layout(
-        margin=go.layout.Margin(
+    fig.update_layout(
+        margin=dict(
             l=20,
             r=50,
             b=150,
             t=100,
             pad=4
         ),
-
-        # Add horizontal average untrained line
-        shapes=[
-            go.layout.Shape(
-                type="line",
-                x0=-1,
-                y0=average_untrained_weighted,
-                x1=len(x_labels),
-                y1=average_untrained_weighted,
-                line=dict(
-                    color="Red",
-                    dash="dashdot",
-                ),
-            ),
-        ],
 
         title='Power Profile ' + str(athlete['name']),
         paper_bgcolor=gc_bg_color,
@@ -293,18 +272,38 @@ def main():
             color=gc_text_color,
             size=12
         ),
-        yaxis=dict(
-            showticklabels=False,
-            tickvals=y_scale,
-            range=[0, max(y_scale) + 1],
-            gridwidth=2,
-            gridcolor='DarkGray',
-        ),
-        annotations=annotations,
-
     )
-    fig = go.Figure(data=data, layout=layout)
-    plotly.offline.plot(fig, auto_open=False, filename=temp_file.name)
+
+    # Add horizontal average untrained line
+    fig.add_shape(
+        type="line",
+        x0=-1,
+        y0=average_untrained_weighted,
+        x1=len(x_labels),
+        y1=average_untrained_weighted,
+        line=dict(
+            color="Red",
+            dash="dashdot",
+        ),
+    )
+
+    fig.update_xaxes(
+        showline=False,
+        showgrid=False,
+    )
+
+    fig.update_yaxes(
+        showticklabels=False,
+        tickvals=y_scale,
+        range=[0, max(y_scale) + 1],
+        gridwidth=2,
+        gridcolor='DarkGray',
+    )
+
+    fig.write_html(temp_file.name, auto_open=False)
+    text = Path(temp_file.name).read_text()
+    text = text.replace('<body>', '<body style="margin: 0px;">')
+    Path(temp_file.name).write_text(text)
     GC.webpage(pathlib.Path(temp_file.name).as_uri())
 
 
