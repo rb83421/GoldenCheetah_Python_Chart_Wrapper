@@ -1,4 +1,4 @@
-# Power Profile V6 (Py)
+# Power Profile V7 (Py)
 # This is an python chart
 # Based on an power profile chart it maps your best 3s, 10s, 30s, 1m,3m, 6m,15m, 20m, 40m, 1h(FT).
 # This chart helps to determine where the strengths and weaknesses are for an athlete (based on peak power)
@@ -14,10 +14,10 @@
 # V4 - 2019-10-22: small fix best ever hover text
 # V5 - 2019-10-29: Make linux compatible
 # V6 - 2019-11-13: Executable when no Workout_Title
+# V7 - 2020-07-11: Update plotly syntax + workaround for 8px margin (done by Poncho)
 
 from GC_Wrapper import GC_wrapper as GC
 
-import plotly
 from pathlib import Path
 import bisect
 import tempfile
@@ -304,7 +304,7 @@ def main():
     text = Path(temp_file.name).read_text()
     text = text.replace('<body>', '<body style="margin: 0px;">')
     Path(temp_file.name).write_text(text)
-    GC.webpage(pathlib.Path(temp_file.name).as_uri())
+    GC.webpage(Path(temp_file.name).as_uri())
 
 
 def determine_season_peaks(date_ranges_peaks, selected_date_ranges, all_season_metrics, durations, mmpsdf,
