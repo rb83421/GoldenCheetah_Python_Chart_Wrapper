@@ -18,7 +18,7 @@
 from GC_Wrapper import GC_wrapper as GC
 
 import plotly
-import pathlib
+from pathlib import Path
 import bisect
 import tempfile
 import numpy as np
@@ -301,6 +301,9 @@ def main():
     )
 
     fig.write_html(temp_file.name, auto_open=False)
+    text = Path(temp_file.name).read_text()
+    text = text.replace('<body>', '<body style="margin: 0px;">')
+    Path(temp_file.name).write_text(text)
     GC.webpage(pathlib.Path(temp_file.name).as_uri())
 
 
