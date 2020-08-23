@@ -1,6 +1,6 @@
-# Annual progress V5 (Py)
+# Annual progress V6 (Py)
 # This is an python chart for GC 3.6
-# WARNING: For this chart you need to install an extra package called dash
+# WARNING: For this chart you need to configure your own python and install an extra package called dash
 #
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
@@ -9,6 +9,7 @@
 # V3 - 2020-01-24 - add wait for server before loading webpage
 # V4 - 2020-02-01 - make linux compatible
 # V5 - 2020-06-28 - Add selection in graph
+# V6 - 2020-08-23 - Add subplots (multiple metrics) + add selection line
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -25,9 +26,12 @@ import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 from dash.dependencies import Input, Output
 import os
 import numpy as np
+import plotly
+from decimal import Decimal, ROUND_HALF_UP
 
 # Define GC background color
 gc_bg_color = "#343434"  # 'rgb(52,52,52)'
@@ -44,6 +48,7 @@ styles = {
     }
 }
 
+colors = plotly.colors.DEFAULT_PLOTLY_COLORS
 
 def get_cumulative_metrics():
     data = [
@@ -123,13 +128,83 @@ def get_cumulative_metrics():
 
     return pd.DataFrame(data, columns=['metric', 'type'])
 
+##
+# This function creates cumulative columns for every metric and also fill in empty days later for selection
+##
+def get_season_metrics_for_metrics_per_year(season_metrics):
+    start_time = time.time()
+    season_metrics['year'] = pd.to_datetime(season_metrics.date).dt.year
+    years = sorted(season_metrics.year.unique().tolist(), reverse=True)
+
+    filtered_season_metrics = pd.DataFrame()
+    first = True
+    for metric in get_cumulative_metrics().metric.tolist():
+        metric_for_years = pd.DataFrame()
+        for year in years:
+            # filter year and selected metric
+            dff = season_metrics[season_metrics.year == year][['date', 'year', metric]].copy()
+
+            # summarize metric when multiple entries on one day
+            dff[metric] = dff.groupby(['date'])[metric].transform('sum')
+            # delete duplicate dates
+            dff = dff.drop_duplicates(subset=['date'])
+
+            # add days when no entry with (needed later for selection)
+            processing_year = dff.year.iloc[0]
+            current_year = datetime.now().year
+            if processing_year == current_year:
+                idx = pd.date_range('01-01-' + str(processing_year), dff.date.iloc[-1])
+            else:
+                idx = pd.date_range('01-01-' + str(processing_year), '31-12-' + str(dff.year.iloc[-1]))
+            dff = dff.set_index('date')
+            dff.index = pd.DatetimeIndex(dff.index)
+            dff = dff.reindex(idx, fill_value=0)
+            dff.insert(0, 'date', dff.index)
+
+            # transform month number to readable month
+            dff['year'] = year
+            dff['month'] = pd.to_datetime(dff.index).month
+            dff.month = dff.month.apply(lambda x: calendar.month_abbr[x])
+            dff["period"] = pd.to_datetime(dff.index).day.astype(str) + '-' + dff.month
+
+            # add column with the summarized values and interpolate in between values
+            dff['cumsum_' + str(metric)] = dff[metric].cumsum()
+
+            # create an opacity value for the days entries are found an marker can be placed
+            dff['opacity'] = np.where(dff[metric] == 0.0, 0, 0.6)
+            metric_for_years = pd.concat([metric_for_years, dff])
+
+        if first:
+            filtered_season_metrics = metric_for_years.copy()
+            first = False
+        else:
+            filtered_season_metrics = pd.merge(filtered_season_metrics, metric_for_years[['date', str(metric), 'cumsum_'+str(metric)]], on='date')
+    print("Processing data cost: " + str(time.time() - start_time))
+    return filtered_season_metrics
+
+
+def add_legend_data(fig, years):
+    # workaround to get a custom legend
+    for i in np.arange(0, len(years)):
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode='lines+markers',
+                marker=dict(size=8, color=colors[i]),
+                legendgroup=years[i],
+                showlegend=True,
+                name=years[i],
+            )
+        )
+
 
 def main():
     assets_dir = write_css()
     app = dash.Dash(assets_folder=assets_dir)
 
-    season_metrics = pd.DataFrame(GC.seasonMetrics(all=True))
-    season_metrics['year'] = pd.to_datetime(season_metrics.date).dt.year
+    season_metrics_raw = pd.DataFrame(GC.seasonMetrics(all=True))
+    season_metrics = get_season_metrics_for_metrics_per_year(season_metrics_raw)
 
     years = sorted(season_metrics.year.unique().tolist(), reverse=True)
     year_options = []
@@ -140,169 +215,211 @@ def main():
     cumulative_metrics = get_cumulative_metrics()
     for column in cumulative_metrics.metric.tolist():
         metrics_options.append({"label": column, "value": column})
-
     app.layout = html.Div([html.Div([html.H1("Annual Progress Year")], style={'textAlign': "center"}),
                            html.Div([dcc.Dropdown(id="year-value", multi=True, value=[years[0]],
                                                   options=year_options)],
                                     className="row",
                                     style={"display": "block", "width": "60%", "margin-left": "auto",
                                            "margin-right": "auto"}),
-                           html.Div([dcc.Dropdown(id="type-value", value="Distance",
+                           html.Div([dcc.Dropdown(id="type-value", value="Distance", multi=True,
                                                   options=metrics_options)],
                                     className="row",
                                     style={"display": "block", "width": "60%", "margin-left": "auto",
                                            "margin-right": "auto"}),
-                           html.Div([dcc.Graph(id="my-graph")]),
-                           html.Div([html.Pre(id='click-data'),
-                           ]),
+                           html.Div([dcc.Graph(id="my-graph")], ),
+                           html.Div([html.Pre(id='click-data')],),
                            ], className="container")
+
 
     @app.callback(
         Output('my-graph', 'figure'),
         [Input('year-value', 'value'),
-         Input('type-value', 'value'), ])
-    def update_figure(selected, metric):
-        metric_type = cumulative_metrics[cumulative_metrics.metric == metric].type.tolist()[0]
-        trace = []
-        yaxis = {"title": metric,
-                 "gridcolor": 'gray',
-                 }
+         Input('type-value', 'value'),
+         Input('my-graph', 'clickData')
+         ])
+    def update_figure(selected, metrics, click_data):
+        # if only one metric is selected it is not an list transform to list
+        if not isinstance(metrics, list):
+            metrics = [metrics]
 
-        if selected:
-            # Workaround if there is an leap year you need to process that first
-            # This because with x-axis not being a sequence number!!!
-            # So change order of selected years
-            reorder = False
-            for selected_year in selected:
-                if calendar.isleap(selected_year):
-                    reorder = True
-                    first = selected_year
-            if reorder and len(selected) > 1 and selected[0] != first:
-                selected.remove(first)
-                selected.insert(0,first)
+        cols = 1
+        if len(metrics) > 1:
+            cols = 2
+        rows = int(Decimal(len(metrics)/2).to_integral_value(rounding=ROUND_HALF_UP))
+        row_height = 500
+        fig = make_subplots(rows=rows,
+                            cols=cols,
+                            subplot_titles=metrics,
+                            row_heights=np.full(rows, row_height).tolist())
+        fig.update_layout(title="Aggregated '" + ','.join(metrics) + "'",
+                          paper_bgcolor=gc_bg_color,
+                          plot_bgcolor=gc_bg_color,
+                          clickmode='event',
+                          autosize=False,
+                          height=row_height*rows,
+                          font=dict(
+                              color=gc_text_color,
+                              size=chart_title_size,
+                          ),
+                          )
 
-            for selected_year in selected:
-                # filter year and selected metric
-                dff = season_metrics[season_metrics.year == selected_year][['date', 'year', metric]].copy()
+        row = 1
+        col = 1
+        chart_counter = 1
+        vlines=[]
+        for metric in metrics:
+            metric_type = cumulative_metrics[cumulative_metrics.metric == metric].type.tolist()[0]
+            if selected:
+                # Workaround if there is an leap year you need to process that first
+                # This because with x-axis not being a sequence number!!!
+                # So change order of selected years
+                reorder = False
+                for selected_year in selected:
+                    if calendar.isleap(selected_year):
+                        reorder = True
+                        first = selected_year
+                if reorder and len(selected) > 1 and selected[0] != first:
+                    selected.remove(first)
+                    selected.insert(0, first)
 
-                # summarize metric when multiple entries on one day
-                dff[metric] = dff.groupby(['date'])[metric].transform('sum')
-                # delete duplicate dates
-                dff = dff.drop_duplicates(subset=['date'])
+                color_index = 0
+                for selected_year in selected:
+                    dff = season_metrics[season_metrics.year == selected_year].copy()
+                    if metric_type == 'time':
+                        hover_text = [
+                            str(metric) + ": " + str(format_hms_seconds(duration)) + "<br>Date: " + date.strftime("%d-%m-%Y")
+                            for duration, date in zip(dff[metric].cumsum().tolist(), dff.date)]
+                    else:
+                        hover_text = [str(metric) + ": " + str(cumsum) + "<br>Date: " + date.strftime("%d-%m-%Y") for
+                                      cumsum, date in zip(dff[metric].cumsum().tolist(), dff.date)]
 
-                # add days when no entry with (needed later for selection)
-                processing_year = dff.year.iloc[0]
-                current_year = datetime.now().year
-                if processing_year == current_year:
-                    idx = pd.date_range('01-01-' + str(processing_year), dff.date.iloc[-1])
-                else:
-                    idx = pd.date_range('01-01-' + str(processing_year), '31-12-' + str(dff.year.iloc[-1]))
-                dff = dff.set_index('date')
-                dff.index = pd.DatetimeIndex(dff.index)
-                dff = dff.reindex(idx, fill_value=0)
+                    fig.append_trace(
+                        go.Scatter(x=dff.period,
+                                   y=dff['cumsum_'+str(metric)],
+                                   # name=selected_year,
+                                   mode='lines+markers',
+                                   hoverinfo="text",
+                                   hovertext=hover_text,
+                                   showlegend=False,
+                                   line={'color': colors[color_index]},
+                                   marker={'size': 8,
+                                           "opacity": dff.opacity,
+                                           "line": {'width': 0.5,}
+                                           },
+                                   ),
+                        row=row,
+                        col=col
+                    )
+                    color_index = color_index + 1
 
-                # transform month number to readable month
-                dff['month'] = pd.to_datetime(dff.index).month
-                dff.month = dff.month.apply(lambda x: calendar.month_abbr[x])
-                dff["period"] = pd.to_datetime(dff.index).day.astype(str) + '-' + dff.month
-
-                # add column with the summarized values and interpolate in between values
-                dff['cumsum_'+str(metric)] = dff[metric].cumsum()
-
-                # create an opacity value for the days entries are found an marker can be placed
-                dff['opacity'] = np.where(dff[metric] == 0.0, 0, 0.6)
-
-                if metric_type == 'time':
-                    hover_text = [
-                        str(metric) + ": " + str(format_hms_seconds(duration)) + "<br>Date: " + date.strftime("%d-%m-%Y")
-                        for duration, date in zip(dff[metric].cumsum().tolist(), dff.index)]
-                else:
-                    hover_text = [str(metric) + ": " + str(cumsum) + "<br>Date: " + date.strftime("%d-%m-%Y") for
-                                  cumsum, date in zip(dff[metric].cumsum().tolist(), dff.index)]
-
-                trace.append(go.Scatter(x=dff.period,
-                                        y=dff['cumsum_'+str(metric)],
-                                        name=selected_year,
-                                        mode='lines+markers',
-                                        hoverinfo="text",
-                                        hovertext=hover_text,
-                                        marker={'size': 8, "opacity": dff.opacity, "line": {'width': 0.5}}, ))
-
+            yaxis = {"title": metric,
+                     "gridcolor": 'gray',
+                     }
+            max_y = season_metrics[season_metrics.year.isin(selected)].groupby(["year"])["cumsum_" + str(metric)].max().max()
             if metric_type == 'time':
-                cumsum = dff['cumsum_'+str(metric)].tolist()
-                tickvals = [cumsum[i * 20] for i in range(int(len(cumsum) / 20) + 1)]
-                tickvals.append(cumsum[-1])
+                # season_metrics[season_metrics.year.isin()]
+                season_metrics[season_metrics.year == selected_year].copy()
+                number_of_ticks = 20
+                # 5% large y axis for the visibility
+                tickvals = range(0, int(max_y*1.05), int(max_y/number_of_ticks))
                 ticktext = [format_hms_seconds(tickval) for tickval in tickvals]
+
                 yaxis = {"title": metric,
                          "gridcolor": 'gray',
-                         "tickvals": tickvals,
+                         "tickvals": [tickval for tickval in tickvals],
                          "ticktext": ticktext,
                          }
 
-        tickvals_x = [i for i in range(1, 365, 10)]
-        tickvals_x.append(365)
-        ticktext_x = [datetime.strptime(str(tickval), "%j").strftime("%d-%b") for tickval in tickvals_x]
+            fig.update_yaxes(yaxis, row=row, col=col,)
+            fig.update_xaxes(
+                {"title": "Day of Year",
+                 "gridcolor": 'gray',
+                 "tickangle": 45,
+                 },
+                row=row,
+                col=col,
+            )
+            if click_data:
+                vlines.append(
+                    dict(
+                        type='line',
+                        yref='y' + str(chart_counter), y0=0, y1=max_y*1.1,
+                        xref='x' + str(chart_counter), x0=click_data['points'][0]['pointIndex'], x1=click_data['points'][0]['pointIndex'],
+                        line=dict(
+                            color="Red",
+                            width=1
+                        )
+                    )
+                )
 
-        return {
-            "data": trace,
-            "layout": go.Layout(title="Aggregated '" + str(metric) + "'",
-                                xaxis={"title": "Day of Year",
-                                       "gridcolor": 'gray',
-                                       "tickangle": 45,
-                                       "tickvals": tickvals_x,
-                                       "ticktext": ticktext_x,
-                                       },
-                                yaxis=yaxis,
-                                paper_bgcolor=gc_bg_color,
-                                plot_bgcolor=gc_bg_color,
-                                clickmode='event',
-                                font=dict(
-                                    color=gc_text_color,
-                                    size=chart_title_size,
-                                ),
-
-                                )
-        }
+            fig.update_layout(shapes=vlines)
+            chart_counter = chart_counter + 1
+            # set the next row and column
+            if col == 2:
+                col = 1
+                row = row + 1
+            else:
+                col = 2
+        add_legend_data(fig, selected)
+        return fig
 
     @app.callback(
         Output('click-data', 'children'),
         [Input('my-graph', 'clickData'),
-         Input('type-value', 'value'), ]
+         Input('year-value', 'value'),
+         Input('type-value', 'value')]
     )
-    def display_click_data(click_data, metric):
-        if click_data:
-            metric_type = cumulative_metrics[cumulative_metrics.metric == metric].type.tolist()[0]
+    def display_click_data(click_data, selected_years, selected_metrics):
+        if not click_data:
+            return html.Div([html.H1("Selected a date")])
+        else:
+            selected_date = click_data['points'][0]['x']
 
-            df = pd.DataFrame()
-            for point in click_data['points']:
-                new_row = {'metric': round(point['y'], 2), 'year': point['hovertext'].split('-')[-1]}
-                # append row to the dataframe
-                df = df.append(new_row, ignore_index=True)
+            if not isinstance(selected_years, list):
+                selected_years = [selected_years]
 
-            df = df.sort_values('year')
+            if not isinstance(selected_metrics, list):
+                selected_metrics = [selected_metrics]
 
-            # Add difference column for previous year
-            df['delta'] = round(df.metric.diff(+1), 2)
+            dff = season_metrics[(season_metrics.period == selected_date) & (season_metrics.year.isin(selected_years))].copy()
+            dff = dff.sort_values('year')
+
+            # Create header for table and
+            header = [html.Th('Year')]
+            for metric in selected_metrics:
+                dff['delta_'+str(metric)] = round(dff['cumsum_' + str(metric)].diff(+1), 2)
+                header.append(html.Th(metric))
+                header.append(html.Th('Δ ' + str(metric)))
+
+            # For every year create and new row in the table
+            table_rows_data = []
+            for i in range(len(dff)):
+                tr = [html.Td(dff.iloc[i].year)]
+                for metric in selected_metrics:
+                    metric_type = cumulative_metrics[cumulative_metrics.metric == metric].type.tolist()[0]
+                    cumsum = round(dff.iloc[i]['cumsum_' + str(metric)], 2)
+                    delta = round(dff.iloc[i]['delta_' + str(metric)], 2)
+                    if metric_type == 'time':
+                        cumsum = format_hms_seconds(cumsum)
+                        delta = format_hms_seconds(delta)
+
+                    if dff.iloc[i]['delta_' + str(metric)] >= 0:
+                        style = styles['green']
+                    else:
+                        style = styles['red']
+
+                    tr.append(html.Td(cumsum))
+                    tr.append(html.Td(delta, style=style))
+                table_rows_data.append(html.Tr(tr))
 
             return html.Div([
                 html.H1("Selected Date: " + str(click_data['points'][0]['x'])),
 
                 html.Table(
-                    # Header
-                    [html.Tr([html.Th('Year'), html.Th(metric), html.Th('Δ previous year')])] +
-
-
-                    # Body
-                    [html.Tr([html.Td(df.iloc[i].year),
-                              html.Td(format_hms_seconds(df.iloc[i]['metric']) if metric_type == 'time' else df.iloc[i]['metric']),
-                              html.Td(format_hms_seconds(df.iloc[i].delta) if metric_type == 'time' else df.iloc[i].delta,
-                                      style=styles['green'] if df.iloc[i].delta >= 0 else styles['red'])
-                             ])
-                        for i in range(len(df))]
+                    [html.Tr(header)] +
+                    [tr for tr in table_rows_data]
                 )
             ])
-
-        return html.Div([html.H1("Selected a date")])
 
     return app
 
@@ -397,7 +514,7 @@ def wait_for_server():
 
 
 if __name__ == '__main__':
-    kill_previous_dash_server()
+    # kill_previous_dash_server()
     threading.Thread(target=run_server, args=(main(),), name="dash").start()
     wait_for_server()
     # run_server(main())
