@@ -1,4 +1,4 @@
-# Power Profile V7 (Py)
+# Power Profile V8 (Py)
 # This is an python chart
 # Based on an power profile chart it maps your best 3s, 10s, 30s, 1m,3m, 6m,15m, 20m, 40m, 1h(FT).
 # This chart helps to determine where the strengths and weaknesses are for an athlete (based on peak power)
@@ -15,6 +15,7 @@
 # V5 - 2019-10-29: Make linux compatible
 # V6 - 2019-11-13: Executable when no Workout_Title
 # V7 - 2020-07-11: Update plotly syntax + workaround for 8px margin (done by Poncho)
+# V8 - 2020-08-30: update body measurement WEIGHTKG GC 3.6 SNAPSHOT
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -69,7 +70,7 @@ def main():
     # TODO investigate if/how FTP/CP and weight is needed from specific time i.s.o. latest.
     try:
         body_measurements = GC.seasonMeasures(all=True, group="Body")
-        athlete_kg = body_measurements['Weight'][-1]
+        athlete_kg = body_measurements['WEIGHTKG'][-1]
         # when athlete weight incorrect fall back on athlete default weight
         if athlete_kg <= 0:
             athlete_kg = athlete['weight']
