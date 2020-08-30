@@ -5,7 +5,8 @@ This wrapper program is enabling you to build more advance python charts and **d
 
 Within GC you can create python charts for more information on that see GC wiki page: [UG_Special Topics_Working with Python](https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Special-Topics_Working-with-Python)
 
-This project is created based on GC version 3.5 
+This project is created based on GC version 3.6
+Note: last update xdata series are supported this need latest snapshot build for performance reasons: [Snapshot Builds](http://goldencheetah-binaries.s3-website-us-east-1.amazonaws.com/)
 
 Any remarks or questions post them on the GC [User Forum](https://groups.google.com/forum/#!forum/golden-cheetah-users)
 
