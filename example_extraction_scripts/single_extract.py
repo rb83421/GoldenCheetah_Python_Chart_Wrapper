@@ -34,12 +34,12 @@ for gc_serie in dir(GC):
     if gc_serie.startswith("SERIES"):
         gc_series[gc_serie] = list(GC.series(getattr(GC, gc_serie)))
 
-activity_xdata_series_names={}
+activity_xdata_series_names = {}
 for name in activity_xdata_names:
     activity_xdata_series_names[name] = list(GC.xdataNames(name))
 
 activity_xdata_series = {}
-for name in  activity_xdata_series_names:
+for name in activity_xdata_series_names:
     activity_xdata_series[name] = {}
     for serie in activity_xdata_series_names[name]:
         activity_xdata_series[name][serie] = list(GC.xdataSeries(name, serie))
