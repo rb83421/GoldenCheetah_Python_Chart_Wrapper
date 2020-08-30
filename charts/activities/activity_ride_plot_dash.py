@@ -1,12 +1,12 @@
-# Ride plot dash V3 (Py)
+# Ride plot dash V4 (Py)
 # This is an python chart
-# WARNING: For this chart you need to install an extra package called dash
-#
+# WARNING: For this chart you need to configure your own python and install an extra package called dash#
 # Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
 # V1 - 2020-01-08 - initial chart (based on ride plot V5)
 # V2 - 2020-01-24 - add wait for server before loading webpage
 # V3 - 2020-02-01 - make linux compatible
+# V4 - 2020-08-30 - remove workaround solved with GC 3.6
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -1245,9 +1245,6 @@ def wait_for_server():
 
 
 if __name__ == '__main__':
-    # Redirect stdout when running in GC else you get and CatchOutErr on file.flush of flask app
-    # Temp till the following issue is fixed: https://github.com/GoldenCheetah/GoldenCheetah/issues/3293
-    sys.stdout = open(os.path.join(tempfile.gettempdir(), "GC_server_ride_plot.log"), 'a')
     kill_previous_dash_server()
     threading.Thread(target=run_server, args=(main(),), name="dash").start()
     wait_for_server()
