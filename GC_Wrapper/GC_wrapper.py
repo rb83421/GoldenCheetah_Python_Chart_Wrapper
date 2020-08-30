@@ -10,7 +10,6 @@ from GC_DATA import trend_single_extract_all_season_metrics
 from GC_DATA import trend_single_extract_all_tss_pmc
 from GC_DATA import trend_season_peaks_power
 from GC_DATA import trend_season_peaks_wpk
-from GC_DATA import trend_season_measures
 
 from GC_DATA import trend_season_compare_peaks_power
 from GC_DATA import trend_season_compare_peaks_wpk
