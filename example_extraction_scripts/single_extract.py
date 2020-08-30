@@ -15,17 +15,34 @@ activity = GC.activity()
 activity_list = GC.activities( filter='Data contains "P" and Data contains "H"')
 activity_intervals = GC.activityIntervals()
 activity_metrics = GC.activityMetrics()
+activity_xdata_names = GC.xdataNames()
 zone = GC.athleteZones(date=activity_metrics["date"], sport="bike")
 season_metrics = GC.seasonMetrics(all=True)
 pmc = GC.seasonPmc(all=True, metric="BikeStress")
 season_mean_max = GC.seasonMeanmax(all=True)
 durations = [1, 3, 5, 10, 15, 20, 30, 60, 120, 180, 300, 360, 480, 600, 900, 1200, 1800, 2400, 3600, 5400]
+
 peaks_power = []
 peaks_wpk = []
 for duration in durations:
     peaks_power.append(GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=duration))
 for duration in durations:
     peaks_wpk.append(GC.seasonPeaks(all=True, filter='Data contains "P"', series='wpk', duration=duration))
+
+gc_series = {}
+for gc_serie in dir(GC):
+    if gc_serie.startswith("SERIES"):
+        gc_series[gc_serie] = list(GC.series(getattr(GC, gc_serie)))
+
+activity_xdata_series_names={}
+for name in activity_xdata_names:
+    activity_xdata_series_names[name] = list(GC.xdataNames(name))
+
+activity_xdata_series = {}
+for name in  activity_xdata_series_names:
+    activity_xdata_series[name] = {}
+    for serie in activity_xdata_series_names[name]:
+        activity_xdata_series[name][serie] = list(GC.xdataSeries(name, serie))
 
 print('Collect DATA: {}'.format(datetime.now() - start))
 
@@ -96,9 +113,8 @@ def write_gc_enums():
 
 def write_gc_series():
     f = open(os.path.join(store_location, "activity_single_extract_series.py"), "w+")
-    for gc_serie in dir(GC):
-        if gc_serie.startswith("SERIES"):
-            f.writelines(gc_serie + " = " + str(list(GC.series(getattr(GC, gc_serie)))) + "\n")
+    for key in gc_series.keys():
+        f.writelines(str(key) + " = " + str(gc_series[key]) + "\n")
     f.close()
 
 
@@ -163,6 +179,28 @@ def write_peaks_wpk():
     f.close()
 
 
+def write_xdata_names():
+    f = open(os.path.join(store_location, "activity_single_xdata_names.py"), "w+")
+    f.writelines("xdata_names = " + str(activity_xdata_names))
+    f.close()
+
+
+def write_xdata_series_names():
+    f = open(os.path.join(store_location, "activity_single_extract_xdata_series_names.py"), "w+")
+    f.writelines("xdata_series_names = { \n")
+    for key in activity_xdata_series_names.keys():
+        f.writelines("    '" + str(key) + "': " + str(activity_xdata_series_names[key]) + ", \n")
+    f.writelines("}\n")
+    f.close()
+
+
+def write_xdata_series():
+    f = open(os.path.join(store_location, "activity_single_extract_xdata_series.py"), "w+")
+    # No formatting done yet
+    f.writelines("xdata_serie =" + str(activity_xdata_series))
+    f.close()
+
+
 if __name__ == "__main__":
     p = [
         threading.Thread(target=write_athlete_body, args=[athlete_body_found]),
@@ -179,6 +217,9 @@ if __name__ == "__main__":
         threading.Thread(target=write_season_max_all, args=()),
         threading.Thread(target=write_peaks_power, args=()),
         threading.Thread(target=write_peaks_wpk, args=()),
+        threading.Thread(target=write_xdata_names, args=()),
+        threading.Thread(target=write_xdata_series_names, args=()),
+        threading.Thread(target=write_xdata_series, args=()),
     ]
 
     start = datetime.now()
@@ -187,4 +228,5 @@ if __name__ == "__main__":
 
     for i in p:
         i.join()
+
     print('Write data: {}'.format(datetime.now() - start))

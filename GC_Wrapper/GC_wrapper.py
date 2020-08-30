@@ -6,6 +6,9 @@ from GC_DATA import activity_single_extract_series
 from GC_DATA import activity_single_extract_data
 from GC_DATA import activity_single_extract_intervals
 from GC_DATA import activity_list
+from GC_DATA import activity_single_xdata_names
+from GC_DATA import activity_single_extract_xdata_series_names
+from GC_DATA import activity_single_extract_xdata_series
 from GC_DATA import trend_single_extract_all_season_metrics
 from GC_DATA import trend_single_extract_all_tss_pmc
 from GC_DATA import trend_season_peaks_power
@@ -117,11 +120,16 @@ def activity(activity=None):  # to get the activities data
 
 def series(type, activity=None):  # to get an individual series data
     if type == SERIES_HR:
-        return activity_single_extract_series.HR
+        return activity_single_extract_series.SERIES_HR
     elif type == SERIES_WATTS:
-        return activity_single_extract_series.WATTS
+        return activity_single_extract_series.SERIES_WATTS
     elif type == SERIES_SECS:
-        return activity_single_extract_series.SECS
+        return activity_single_extract_series.SERIES_SECS
+    elif type == SERIES_LAT:
+        return activity_single_extract_series.SERIES_LAT
+    elif type == SERIES_LON:
+        return activity_single_extract_series.SERIES_LON
+
     else:
         raise Exception('NOT YET Implemented in GC wrapper' + str(type))
     # Not implemented yet
@@ -134,13 +142,14 @@ def activityWbal(activity=None):  # to get wbal series data    #Not implemented 
 
 
 def xdataNames(name="", activity=None):  # to get activities xdata series names
-    # Not implemented yet
-    return None
+    if name:
+        return activity_single_extract_xdata_series_names.xdata_series_names[name]
+    else:
+        return activity_single_xdata_names.xdata_names
 
 
 def xdataSeries(name, series, activity=None):  # to get activities xdata series in its own sampling interval
-    # Not implemented yet
-    return None
+    return activity_single_extract_xdata_series.xdata_serie[name][series]
 
 
 def xdata(name, series, join="repeat", activity=None):  # to get interpolated activities xdata series
@@ -300,4 +309,3 @@ def seasonMeasures(all=False, group="Body"):  # to get Daily measures (Body and 
     #     return athlete_data.athlete_data
 
     return None
-
