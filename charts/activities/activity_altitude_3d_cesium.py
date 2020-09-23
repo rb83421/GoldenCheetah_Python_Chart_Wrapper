@@ -1,5 +1,5 @@
 """
-Altitude 3d Cesium V10 (Py)
+Altitude 3d Cesium V11 (Py)
 This is an python chart
 displays 3d altitude map with cesium
 It will work without API_KEY best to register for free at https://cesium.com/
@@ -16,6 +16,7 @@ V7 - 2020-02-16 - make more robust for missing data + update selection layout
 V8 - 2020-02-16 - fix typo + fix selection multiple intervals
 V9 - 2020-02-20 - make interval name robust with special characters
 V10 - 2020-06-18 - small fixes when ride without power is selected
+V11 - 2020-09-23 - round values power(2) heartrate(0) speed(2)
 
 """
 
@@ -533,12 +534,12 @@ def write_html(activity_df,
     status_selected_interval = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if selected_interval_entities == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
 
     status_power = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if power_zone_ranges == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
-    power_values = str(temp_df.power.tolist()) if "power" in temp_df else "[]"
+    power_values = str(temp_df.power.round(2).tolist()) if "power" in temp_df else "[]"
     power_gauge_axis = "" if power_zone_ranges == "" else get_power_gauge(power_zone_ranges, max_watt)
     power_gauge_animation = "" if power_zone_ranges == "" else get_power_gauge_animation()
 
     status_heartrate = "unchecked disabled data-onstyle=\"danger\" data-offstyle=\"danger\"" if heartrate_zone_ranges == "" else "checked data-onstyle=\"success\" data-offstyle=\"warning\""
-    heartrate_values = str(temp_df['heart.rate'].tolist()) if "heart.rate" in temp_df else "[]"
+    heartrate_values = str(temp_df['heart.rate'].round(0).tolist()) if "heart.rate" in temp_df else "[]"
     heartrate_gauge_axis = "" if heartrate_zone_ranges == "" else get_heartrate_gauge(heartrate_zone_ranges, max_hr)
     heartrate_gauge_animation = "" if heartrate_zone_ranges == "" else get_heartrate_gauge_animation()
     speed_overwrite = '''
@@ -651,7 +652,7 @@ def write_html(activity_df,
     ''' + provided_api_key + '''
     var nan = NaN;    
     var power = ''' + power_values + ''';
-    var speed = ''' + str(temp_df.speed.tolist()) + ''';
+    var speed = ''' + str(temp_df.speed.round(2).tolist()) + ''';
     var hr = ''' + heartrate_values + ''';
 
     var viewer = new Cesium.Viewer('cesiumContainer', {
