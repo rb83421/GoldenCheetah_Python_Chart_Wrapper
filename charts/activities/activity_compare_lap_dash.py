@@ -1,10 +1,10 @@
 """
 Activity compare laps V1 (Py)
 This is an python chart.
-With this chart enable to compare laps of multiple activiteis.
+With this chart enable to compare laps of multiple activities.
 You need to use the default compare functionality of GC see https://github.com/GoldenCheetah/GoldenCheetah/wiki/UG_Compare-Pane_General
 
-WARNING: For this chart you need to configure your own python and install an extra package called dash#
+WARNING: For this chart you need to configure your own python and install an extra package called dash!!
 Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 
 V1 - 2020-11-12 - initial chart
@@ -34,6 +34,7 @@ gc_bg_color = "#343434"  # 'rgb(52,52,52)'
 gc_text_color = "#ffffff"  # 'rgb(255,255,255)'
 
 chart_title_size = 10
+chart_height = 300
 
 
 def main():
@@ -215,7 +216,7 @@ def main():
 
 def get_layout(title):
     return dict(title=title,
-                height=300,
+                height=chart_height,
                 paper_bgcolor=gc_bg_color,
                 plot_bgcolor=gc_bg_color,
                 hovermode='x',
@@ -298,7 +299,7 @@ def ride_plot_smooth(activities, smooth_value=20):
                                         np.where(act['hovertext'] == "", hover_text,
                                                  act['hovertext'] + ", " + hover_text),
                                         act['hovertext'])
-        fig.add_trace(go.Scatter(name=hover_text,
+        fig.add_trace(go.Scatter(name="",
                                  mode='lines',
                                  x=act.seconds_fmt,
                                  y=np.zeros(len(act.seconds_fmt)),
@@ -392,12 +393,6 @@ def write_css():
   
 }
 
-.tab ,
-.tab--selected{
-  background-color: #343434 !important;
-  color: #ffffff !important;
-}
-
 * {
     margin: 0;
     padding: 0;
@@ -441,7 +436,7 @@ html{
 
 
 def run_server(app):
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 
 
 def kill_previous_dash_server():
@@ -469,9 +464,9 @@ def wait_for_server():
 
 
 if __name__ == '__main__':
-    # kill_previous_dash_server()
-    # threading.Thread(target=run_server, args=(main(),), name="dash").start()
-    # wait_for_server()
+    kill_previous_dash_server()
+    threading.Thread(target=run_server, args=(main(),), name="dash").start()
+    wait_for_server()
     # Use for development
-    run_server(main())
+    #run_server(main())
     GC.webpage("http://127.0.0.1:8050/")
