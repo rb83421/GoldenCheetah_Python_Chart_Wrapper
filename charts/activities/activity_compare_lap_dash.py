@@ -78,14 +78,14 @@ def main():
             )
         ], className="row",
             style={"display": "block", "margin-left": "0px", "width": "500px"}),
-        html.P(dcc.Graph(id="ride-plot-graph-smooth")),
+        html.P(dcc.Graph(id="ride-plot-graph-smooth"), className="ride_plot"),
         html.Div([html.Pre(id='zoom-data')], ),
         html.Div([dcc.Dropdown(id="interval-value", value="", multi=True,
                                options=interval_options)],
                  className="row",
                  style={"display": "block", "width": "60%", "margin-left": "auto",
                         "margin-right": "auto"}),
-        html.P(dcc.Graph(id="interval-plot-graph-smooth")),
+        html.P(dcc.Graph(id="interval-plot-graph-smooth"), className="ride_plot"),
         html.Div([html.Pre(id='zoom-data-interval')], ),
 
     ], className='container')
@@ -153,7 +153,6 @@ def main():
 
         ])
 
-
     @app.callback(Output('zoom-data-interval', 'children'),
                   [Input('interval-plot-graph-smooth', 'relayoutData'),  # this triggers the event
                    Input('interval-value', 'value')])
@@ -216,6 +215,7 @@ def main():
 
 def get_layout(title):
     return dict(title=title,
+                height=300,
                 paper_bgcolor=gc_bg_color,
                 plot_bgcolor=gc_bg_color,
                 hovermode='x',
@@ -258,6 +258,7 @@ def ride_plot_smooth(activities, smooth_value=20):
     fig = go.Figure()
     for activity in activities:
         act = activity['activity'].filter(["seconds", "power", "heart.rate", "cadence"])
+        intervals = activity['intervals']
         act['seconds_fmt'] = act.apply(lambda row: format_hms_seconds(row.seconds), axis=1)
         time_title = " (" + str(datetime.combine(activity['metrics']['date'], activity['metrics']['time'])) + ")"
         field = 'power'
@@ -276,6 +277,35 @@ def ride_plot_smooth(activities, smooth_value=20):
             fig.add_trace(
                 add_line(act, field, field + time_title, field, smooth_value)
             )
+
+        act['hovertext'] = ""
+        for i in range(len(intervals['name'])):
+            x = format_hms_seconds(intervals['start'][i])
+            fig.add_shape(go.layout.Shape(type="line",
+                                          yref="paper",
+                                          xref="x",
+                                          x0=x,
+                                          y0=0,
+                                          x1=x,
+                                          y1=1,
+                                          line=dict(color="RoyalBlue", width=1),
+                                          # line=dict(color=colors[counter], width=3), ),
+                                          ))
+            start = intervals['start'][i]
+            stop = intervals['stop'][i]
+            hover_text = intervals['name'][i] + time_title
+            act['hovertext'] = np.where((act['seconds'] >= start) & (act['seconds'] <= stop),
+                                        np.where(act['hovertext'] == "", hover_text,
+                                                 act['hovertext'] + ", " + hover_text),
+                                        act['hovertext'])
+        fig.add_trace(go.Scatter(name=hover_text,
+                                 mode='lines',
+                                 x=act.seconds_fmt,
+                                 y=np.zeros(len(act.seconds_fmt)),
+                                 hovertext=act.hovertext,
+                                 showlegend=False,
+                                 opacity=0
+                                 ))
 
     fig.update_layout(get_layout("Ride Plot (smooth value:" + str(smooth_value) + ")"))
     return fig
@@ -405,11 +435,6 @@ html{
     box-align: left;
 
 }
-.ride_plot {
-    clear:both;
-    height: 500px;
-}
-
     '''
     Path(css_file).write_text(template)
     return asset_dir
