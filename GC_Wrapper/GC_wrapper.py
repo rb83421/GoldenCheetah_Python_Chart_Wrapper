@@ -19,6 +19,7 @@ from GC_DATA import trend_season_compare_peaks_wpk
 
 from GC_DATA import trend_compare_seasons
 from GC_DATA import trend_all_seasons
+from GC_DATA import trend_season
 from GC_DATA import trend_compare_seasons_metrics
 from GC_DATA import trend_extract_one_selected_season_metrics
 
@@ -176,7 +177,8 @@ def season(all=False, compare=False):  # to get season details
         return trend_all_seasons.all_seasons
     if compare:
         return trend_compare_seasons.selected_seasons
-
+    else:
+        return trend_season.selected_season
 
 def seasonMetrics(all=False, filter="", compare=False):  # to get season metrics
     if not compare and all:

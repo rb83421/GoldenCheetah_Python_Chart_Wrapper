@@ -6,6 +6,7 @@ start = datetime.now()
 store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
 
 selected_seasons = GC.season(compare=True)
+selected_season = GC.season(compare=False)
 all_seasons = GC.season(all=True)
 one_selected_seasons_metrics = GC.seasonMetrics()
 
@@ -29,6 +30,16 @@ def write_selected_seasons():
     f.writelines("selected_seasons = { \n")
     for key in selected_seasons.keys():
         f.writelines("    '" + str(key) + "': " + str(selected_seasons[key]) + ", \n")
+    f.writelines("\n }")
+    f.close()
+
+
+def write_selected_season():
+    f = open(os.path.join(store_location, "trend_season.py"), "w+")
+    f.writelines("import datetime \n")
+    f.writelines("selected_season = { \n")
+    for key in selected_season.keys():
+        f.writelines("    '" + str(key) + "': " + str(selected_season[key]) + ", \n")
     f.writelines("\n }")
     f.close()
 
@@ -115,6 +126,7 @@ def write_one_selected_season_metrics():
 
 if __name__ == "__main__":
     p = [
+        threading.Thread(target=write_selected_season, args=()),
         threading.Thread(target=write_selected_seasons, args=()),
         threading.Thread(target=write_all_seasons, args=()),
         threading.Thread(target=write_compare_season_metrics, args=()),
