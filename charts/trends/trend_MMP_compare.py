@@ -51,14 +51,22 @@ def format_seconds(secs):
 
 
 def get_table_for_duration(duration, season_name):
-    all = pd.DataFrame(GC.seasonPeaks(all=True, series='power', duration=duration))
+    all_seasons = pd.DataFrame(GC.seasonPeaks(all=True, series='power', duration=duration))
     season = pd.DataFrame(GC.seasonPeaks(series='power', duration=duration))
     field = 'peak_power_' + str(duration)
+
+    avg_top5_season = season.nlargest(5, field).mean().values[0]
+    avg_top5_all_time = all_seasons.nlargest(5, field).mean().values[0]
+
+    all_max = all_seasons[field].max()
+    season_max = season[field].max()
+
     df = pd.DataFrame({
-        'Max': [all[field].max(), season[field].max()],
-        'Avg top 5': [all.nlargest(5, field).mean().values[0], season.nlargest(5, field).mean().values[0]],
+        'Max': [all_max, season_max],
+        'Avg top 5': [avg_top5_all_time, avg_top5_season],
+        'Max \'' + season_name + '\' vs avg top 5 all time (%)':
+            ['', round((season_max / avg_top5_all_time) * 100, 2)],
     })
-    df['Percentage of Max (%)'] = (df['Avg top 5'] / df['Max']) * 100
     df = df.round(2)
     df.index = ['All', season_name]
     return df.to_html()
