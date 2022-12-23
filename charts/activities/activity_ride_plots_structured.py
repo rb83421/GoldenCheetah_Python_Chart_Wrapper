@@ -1,11 +1,14 @@
-# Ride Plots Structured V2 (Py)
-# This is an python chart
-# My take on a ride plot for structured workout/ride
-# Faster than original ride plot
-# Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
-#
-# V1 - 2019-12-24 - initial chart (copy of ride plot V4, change ride plot to structured view)
-# V2 - 2020-01-05 - remove plotly bars
+"""
+Ride Plots Structured V2 (Py)
+This is a python chart
+My take on a ride plot for structured workout/ride
+Faster than original ride plot
+Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
+
+V1 - 2019-12-24 - initial chart (copy of ride plot V4, change ride plot to structured view)
+V2 - 2020-01-05 - remove plotly bars
+V3 - 2022-12-23 - fix series issue + changed get athlete zones from bike to Bike
+"""
 
 import bisect
 
@@ -42,9 +45,9 @@ def main():
 
     start_time = datetime.now()
     activity_metric = GC.activityMetrics()
-    act = GC.activity()
+    act = fix_series(GC.activity())
     activity = pd.DataFrame(act, index=act['seconds'])
-    intervals = pd.DataFrame(GC.activityIntervals())
+    intervals = pd.DataFrame(fix_series(GC.activityIntervals()))
 
     # all pmc data
     pmc_dict = GC.seasonPmc(all=True, metric="BikeStress")
@@ -952,6 +955,12 @@ def create_end_html_float(activity_metric, medals_power_html, medals_hr_html, ma
         </body>
     </html>'''
     Path(temp_file.name).write_text(template)
+
+
+def fix_series(series):
+    for attribute in series:
+        series[attribute] = np.array(series[attribute])
+    return series
 
 
 if __name__ == "__main__":

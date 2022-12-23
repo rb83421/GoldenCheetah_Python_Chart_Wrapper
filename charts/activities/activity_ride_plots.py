@@ -1,19 +1,21 @@
-# Ride Plots V5 (Py)
-# This is an python chart
-# My take on a ride plot
-# currently only for power with a smoothness (moving average) of 20)
-# Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
-#
-# V1 initial chart
-# V2 - 2019-10-29 - Make linux compatible
-# V3 - 2019-11-11 - Update Error handling
-# V4 - 2019-12-13 - remove plotly express
-#                   add intervals to map
-#                   add timeline to rideplot
-#                   add TSB vs IF
-#                   add medals HR and power
-# V5 - 2020-01-05 - remove plotly bars + default disable interval traces in legend
+"""
+Ride Plots V6 (Py)
+This is a python chart
+My take on a ride plot
+currently only for power with a smoothness (moving average) of 20)
+Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 
+V1 initial chart
+V2 - 2019-10-29 - Make linux compatible
+V3 - 2019-11-11 - Update Error handling
+V4 - 2019-12-13 - remove plotly express
+                  add intervals to map
+                  add timeline to rideplot
+                  add TSB vs IF
+                  add medals HR and power
+V5 - 2020-01-05 - remove plotly bars + default disable interval traces in legend
+V6 - 2022-12-23 - fix series issue + changed get athlete zones from bike to Bike
+"""
 
 
 from GC_Wrapper import GC_wrapper as GC
@@ -50,19 +52,19 @@ def main():
 
     start_time = datetime.now()
     activity_metric = GC.activityMetrics()
-    act = GC.activity()
+    act = fix_series(GC.activity())
     activity = pd.DataFrame(act, index=act['seconds'])
-    intervals = pd.DataFrame(GC.activityIntervals())
+    intervals = pd.DataFrame(fix_series(GC.activityIntervals()))
 
     # all pmc data
     pmc_dict = GC.seasonPmc(all=True, metric="BikeStress")
     pmc = pd.DataFrame(pmc_dict)
 
-    zone = GC.athleteZones(date=activity_metric["date"], sport="Bike")
+    zone = fix_series(GC.athleteZones(date=activity_metric["date"], sport="Bike"))
     zones_low = zone['zoneslow'][0]
     zone_colors = zone['zonescolor'][0]
 
-    season_peaks = pd.DataFrame(GC.seasonMetrics(all=True, filter='Data contains "P"'))
+    season_peaks = pd.DataFrame(fix_series(GC.seasonMetrics(all=True, filter='Data contains "P"')))
     end_gather_time = datetime.now()
     print('Gathering data duration: {}'.format(end_gather_time - start_time))
 
@@ -812,6 +814,12 @@ def create_end_html_float(activity_metric, medals_power_html, medals_hr_html, ma
         </body>
     </html>'''
     Path(temp_file.name).write_text(template)
+
+
+def fix_series(series):
+    for attribute in series:
+        series[attribute] = np.array(series[attribute])
+    return series
 
 
 if __name__ == "__main__":
