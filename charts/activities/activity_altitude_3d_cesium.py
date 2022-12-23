@@ -58,7 +58,7 @@ def main():
     activity = GC.activity()
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
-    zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zones = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     activity_df = pd.DataFrame(activity, index=activity['seconds'])
     season_peaks = GC.seasonPeaks(all=True, filter='Data contains "P"', series='power', duration=1)
     print('Gathering data duration: {}'.format(datetime.now() - start_t))

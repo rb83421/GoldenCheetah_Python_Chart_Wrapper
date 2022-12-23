@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 
 start = datetime.now()
-store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
+store_location = 'C:/Users/r_boe/PycharmProjects/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
 
 selected_seasons = GC.season(compare=True)
 selected_season = GC.season(compare=False)

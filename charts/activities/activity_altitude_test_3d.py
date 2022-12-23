@@ -49,7 +49,7 @@ def main():
     activity = GC.activity()
     activity_intervals = GC.activityIntervals()
     activity_metric = GC.activityMetrics()
-    zones = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zones = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     fig = altitude_3d_figure(activity, activity_intervals, zones, coloring_mode, slice_distance, polygon_limit)
     plotly.offline.plot(fig, auto_open=False, filename=temp_file.name)
     GC.webpage(pathlib.Path(temp_file.name).as_uri())

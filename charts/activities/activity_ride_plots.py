@@ -58,7 +58,7 @@ def main():
     pmc_dict = GC.seasonPmc(all=True, metric="BikeStress")
     pmc = pd.DataFrame(pmc_dict)
 
-    zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zone = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     zones_low = zone['zoneslow'][0]
     zone_colors = zone['zonescolor'][0]
 

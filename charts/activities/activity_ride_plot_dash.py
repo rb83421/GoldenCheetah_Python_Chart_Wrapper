@@ -23,8 +23,8 @@ from pathlib import Path
 import tempfile
 import threading
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 import pandas as pd
 import plotly.graph_objs as go
 import os
@@ -75,7 +75,7 @@ def main():
     pmc_dict = GC.seasonPmc(all=True, metric="BikeStress")
     pmc = pd.DataFrame(pmc_dict)
 
-    zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zone = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     zones_low = zone['zoneslow'][0]
     zone_colors = zone['zonescolor'][0]
     cp = zone['cp'][0]

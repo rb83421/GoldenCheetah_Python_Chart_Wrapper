@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 
 start = datetime.now()
-store_location = 'D:/git-repos/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
+store_location = 'C:/Users/r_boe/PycharmProjects/GoldenCheetah_Python_Chart_Wrapper/GC_DATA/'
 athlete = GC.athlete()
 try:
     athlete_body = GC.seasonMeasures(all=True, group="Body")
@@ -16,7 +16,7 @@ activity_list = GC.activities( filter='Data contains "P" and Data contains "H"')
 activity_intervals = GC.activityIntervals()
 activity_metrics = GC.activityMetrics()
 activity_xdata_names = GC.xdataNames()
-zone = GC.athleteZones(date=activity_metrics["date"], sport="bike")
+zone = GC.athleteZones(date=activity_metrics["date"], sport="Bike")
 season_metrics = GC.seasonMetrics(all=True)
 pmc = GC.seasonPmc(all=True, metric="BikeStress")
 season_mean_max = GC.seasonMeanmax(all=True)

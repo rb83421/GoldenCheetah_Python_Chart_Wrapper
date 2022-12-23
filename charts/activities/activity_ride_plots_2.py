@@ -55,7 +55,7 @@ def main():
     activity_metric = GC.activityMetrics()
     act = GC.activity()
     activity = pd.DataFrame(act, index=act['seconds'])
-    zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zone = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     activity_intervals = GC.activityIntervals()
 
     zones_low = zone['zoneslow'][0]

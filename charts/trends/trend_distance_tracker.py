@@ -6,7 +6,7 @@
 # NOTE:
 # Before using this chart update it for your filters and items:
 # Update the filters (e.g. create a filter for Bike 1 or Bike 2)
-# Update tracking items (e.g. Tyre 1 within period january to august for bike 1)
+# Update tracking items (e.g. Tyre 1 within period january to august for Bike 1)
 # For problems/question/suggestions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
 #
 # V1 - Initial Chart

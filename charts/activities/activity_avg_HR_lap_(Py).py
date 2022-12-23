@@ -34,7 +34,7 @@ def main():
     # Get data
     activity_metric = GC.activityMetrics()
     activity = GC.activity(activity=None)
-    zone = GC.athleteZones(date=activity_metric["date"], sport="bike")
+    zone = GC.athleteZones(date=activity_metric["date"], sport="Bike")
     all_intervals = GC.activityIntervals()
     lthr = zone["lthr"][0]
     hrmax = zone["hrmax"][0]
