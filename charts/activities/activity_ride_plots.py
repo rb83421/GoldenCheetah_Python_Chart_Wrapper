@@ -1,5 +1,5 @@
 """
-Ride Plots V6 (Py)
+Ride Plots V7 (Py)
 This is a python chart
 My take on a ride plot
 currently only for power with a smoothness (moving average) of 20)
@@ -15,6 +15,7 @@ V4 - 2019-12-13 - remove plotly express
                   add medals HR and power
 V5 - 2020-01-05 - remove plotly bars + default disable interval traces in legend
 V6 - 2022-12-23 - fix series issue + changed get athlete zones from bike to Bike
+V7 - 2023-01-13 - add HR line
 """
 
 
@@ -536,6 +537,7 @@ def remove_incorrect_lat_long_values(activity):
 
 def ride_plot_html(activity, zone_colors, zones_low):
     fig = go.Figure()
+
     # Zone lines:
     for i in range(len(zones_low)):
         fig.add_trace(
@@ -629,18 +631,62 @@ def ride_plot_html(activity, zone_colors, zones_low):
             showgrid=False,
             tickvals=tick_values,
             ticktext=[format_seconds(i) for i in tick_values],
-
         ),
         yaxis=dict(
-            showgrid=False
+            title="Watts",
+            showgrid=False,
             ),
         font=dict(
             color=gc_text_color,
             size=chart_title_size,
         ),
         margin={"r": 5, "t": 50, "l": 5, "b": 20},
+        legend=dict(
+            orientation="v",
+            x=1.05,
+            xanchor='left',
+            y=1,
+        )
     )
+    # define x-axis heart rate
+    # when there are nan in the heartrate array interpolate them
+    heart_rate = np.asarray(list(activity.interpolate(limit_direction='both')['heart.rate']))
+    # define x-axis seconds
+    seconds = np.asarray(list(activity['seconds']))
+    add_ride_plot_heart_rate_line(fig, seconds, heart_rate)
+
     return plotly.offline.plot(fig, output_type='div', auto_open=False)
+
+
+def add_ride_plot_heart_rate_line(fig, seconds, heart_rate):
+
+    fig.add_trace(
+        go.Scatter(
+            x=seconds,
+            y=heart_rate,
+            mode='lines',
+            showlegend=True,
+            name="HR",
+            line=dict(
+                color='Red',
+            ),
+            yaxis='y2'
+        )
+    )
+
+    fig.update_layout(
+        yaxis2=dict(
+            range=[0, max(heart_rate) + 10],
+            nticks=int(max(heart_rate) / 5),
+            overlaying='y',
+            anchor='x',
+            side='right',
+            showgrid=False,
+            title='HR',
+            rangemode='nonnegative',
+
+        ),
+    )
 
 
 def create_end_html_float(activity_metric, medals_power_html, medals_hr_html, map_html, ride_html, tiz_power_html, tiz_hr_html, tsb_if_power_html):

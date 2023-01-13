@@ -1,21 +1,24 @@
-# Power Profile V8 (Py)
-# This is an python chart
-# Based on an power profile chart it maps your best 3s, 10s, 30s, 1m,3m, 6m,15m, 20m, 40m, 1h(FT).
-# This chart helps to determine where the strengths and weaknesses are for an athlete (based on peak power)
-# It shows always your best ever and overlays the selected date range. Also possible to compare multiple date ranges.
-# Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
-#
-# V1 - 2019-07-21: Initial Chart
-# V2 - 2019-07-26: add different lengths  3s, 10s, 30s, 1m,3m, 6m,15m, 40m, 1h(FT)
-# V3 - 2019-10-16: * refactor use of functions,
-#                  * add activities date and names
-#                  * add 20m FTP duration
-#                  * use current weight of athlete
-# V4 - 2019-10-22: small fix best ever hover text
-# V5 - 2019-10-29: Make linux compatible
-# V6 - 2019-11-13: Executable when no Workout_Title
-# V7 - 2020-07-11: Update plotly syntax + workaround for 8px margin (done by Poncho)
-# V8 - 2020-08-30: update body measurement WEIGHTKG GC 3.6 SNAPSHOT
+"""
+Power Profile V9 (Py)
+This is a python chart
+Based on a power profile chart it maps your best 3s, 10s, 30s, 1m,3m, 6m,15m, 20m, 40m, 1h(FT).
+This chart helps to determine where the strengths and weaknesses are for an athlete (based on peak power)
+It shows always your best ever and overlays the selected date range. Also, possible to compare multiple date ranges.
+Any remarks or questions post on https://groups.google.com/forum/#!forum/golden-cheetah-users
+
+V1 - 2019-07-21: Initial Chart
+V2 - 2019-07-26: add different lengths  3s, 10s, 30s, 1m,3m, 6m,15m, 40m, 1h(FT)
+V3 - 2019-10-16: * refactor use of functions,
+                 * add activities date and names
+                 * add 20m FTP duration
+                 * use current weight of athlete
+V4 - 2019-10-22: small fix best ever hover text
+V5 - 2019-10-29: Make linux compatible
+V6 - 2019-11-13: Executable when no Workout_Title
+V7 - 2020-07-11: Update plotly syntax + workaround for 8px margin (done by Poncho)
+V8 - 2020-08-30: update body measurement WEIGHTKG GC 3.6 SNAPSHOT
+V9 - 2022-12-23: changed get athlete zones from bike to Bike
+"""
 
 from GC_Wrapper import GC_wrapper as GC
 
@@ -77,7 +80,7 @@ def main():
     except (SystemError, TypeError):
         # when an exception might be thrown when no body measures are used fall back on athlete default weight
         athlete_kg = athlete['weight']
-    azz = GC.athleteZones(date=0, sport='bike')
+    azz = GC.athleteZones(date=0, sport='Bike')
     inckg = 1  # real value = 1
     lcp = azz['cp'][-1] * inckg
     lftp = azz['ftp'][-1] * inckg
@@ -419,6 +422,7 @@ def get_category_index_value(duration, peaks, mmpsdf, power_profile_category):
      Determine in which category you belong for a certain duration
     """
     limits = [mmpsdf[category][duration] for category in power_profile_category]
+    limits.append(99)
 
     peak_wpk = max(peaks['peak_wpk_' + str(duration)])
 
@@ -429,6 +433,9 @@ def get_category_index_value(duration, peaks, mmpsdf, power_profile_category):
           ", Power profile category: " + str(power_profile_category[index]))
 
     # calculate percentage between category
+    print("Limits: " + str(limits))
+    print("limits[index]" + str(limits[index]))
+    print("limits[index+1]" + str(limits[index]+1))
     pct = (peak_wpk - limits[index]) / (limits[index + 1] - limits[index])
     return index + pct
 
